@@ -612,16 +612,23 @@ function formatTime24(timeStr) {
   return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 }
 
+function truncateAddr(addr) {
+  // Strip from the first digit+巷/弄/號/樓 onward to hide specific building details
+  return addr.replace(/\d*[巷弄號樓].*/g, '').trim();
+}
+
 function generateSimpleParts(data) {
   const time    = formatTime24(data["預約時間"] || "");
   const service = data["服務項目"] || "";
-  const address = data["接送地址"] || data["接送順序"] || data["連繫地址"] || data["出發地址"] || "";
+  const rawAddr = data["接送地址"] || data["接送順序"] || data["連繫地址"] || data["出發地址"] || "";
+  const address = truncateAddr(rawAddr);
   const flight  = data["航班編號"] || "";
   const carType = data["接送車型"] || "";
   const payment = data["付費方式"] || "";
   const notes   = data["備註"] || "";
 
-  const extraAddr = data["加點地址"] || "";
+  const rawExtra = data["加點地址"] || "";
+  const extraAddr = truncateAddr(rawExtra);
 
   let mainPart = "";
   if (service.includes("接機")) {
