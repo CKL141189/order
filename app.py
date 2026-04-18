@@ -205,6 +205,27 @@ def index():
         drivers=drivers,
     )
 
+@app.route("/api/parse", methods=["POST"])
+def api_parse():
+    text = request.get_json(force=True).get("text", "")
+    orders = parse_orders(text)
+    return jsonify({"orders": orders})
+
+@app.route("/api/add_orders", methods=["POST"])
+def api_add_orders():
+    new_orders = request.get_json(force=True).get("orders", [])
+    existing = load_orders()
+    existing_map = {o.get("訂單號碼"): i for i, o in enumerate(existing)}
+    for o in new_orders:
+        no = o.get("訂單號碼")
+        if no and no in existing_map:
+            existing[existing_map[no]].update({k: v for k, v in o.items() if not k.startswith("_")})
+        else:
+            existing.append(o)
+    existing.sort(key=order_sort_key)
+    save_orders(existing)
+    return jsonify({"ok": True})
+
 @app.route("/api/drivers", methods=["POST"])
 def set_driver():
     data = request.get_json()
