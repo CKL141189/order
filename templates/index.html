@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訂單排序系統</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5; color: #333; }
+.container { max-width: 1100px; margin: 30px auto; padding: 0 20px 60px; }
+h1 { text-align: center; margin-bottom: 24px; font-size: 1.6rem; color: #2c3e50; }
+
+/* Input */
+.input-section { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.input-section label { font-weight: bold; display: block; margin-bottom: 8px; color: #555; }
+textarea { width: 100%; height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; font-family: inherit; }
+textarea:focus { outline: none; border-color: #4a90e2; }
+.btn-row { display: flex; gap: 10px; margin-top: 10px; }
+button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: background 0.2s; }
+.btn-sort { background: #4a90e2; color: #fff; }
+.btn-sort:hover { background: #357abd; }
+.btn-clear { background: #e0e0e0; color: #555; }
+.btn-clear:hover { background: #c8c8c8; }
+.error { background: #fdecea; color: #c0392b; border: 1px solid #f5c6cb; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; }
+
+/* Date Tabs */
+.tabs-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab-btn {
+  padding: 7px 16px; border: 2px solid #ddd; border-radius: 20px;
+  background: #fff; cursor: pointer; font-size: 0.88rem; font-family: inherit;
+  transition: all 0.15s; white-space: nowrap;
+}
+.tab-btn:hover { border-color: #4a90e2; color: #4a90e2; }
+.tab-btn.active { background: #4a90e2; border-color: #4a90e2; color: #fff; font-weight: bold; }
+.tab-count { font-size: 0.78rem; opacity: 0.85; margin-left: 4px; }
+
+/* Toolbar */
+.toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: #fff; border-radius: 8px; padding: 10px 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px;
+}
+.toolbar .sel-info { color: #666; font-size: 0.9rem; flex: 1; min-width: 100px; }
+.toolbar .sel-info span { font-weight: bold; color: #2c3e50; }
+.btn-sm { padding: 6px 14px; font-size: 0.85rem; border-radius: 5px; border: none; cursor: pointer; font-family: inherit; }
+.btn-selall { background: #f0f0f0; color: #444; }
+.btn-selall:hover { background: #e0e0e0; }
+.btn-share { background: #27ae60; color: #fff; }
+.btn-share:hover { background: #1e8449; }
+.btn-share:disabled { background: #a8d5b5; cursor: not-allowed; }
+
+/* Grid */
+.order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+.order-card {
+  background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden; transition: box-shadow 0.2s, transform 0.15s;
+  position: relative; cursor: pointer;
+}
+.order-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.13); }
+.order-card.selected { box-shadow: 0 0 0 3px #4a90e2; }
+.order-card.hidden { display: none; }
+
+.card-checkbox {
+  width: 17px; height: 17px; accent-color: #fff; cursor: pointer;
+  flex-shrink: 0; margin-right: 8px;
+}
+.card-header {
+  background: #4a90e2; color: #fff; padding: 11px 14px;
+  display: flex; align-items: center;
+}
+.card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; }
+.card-header .date-time { font-size: 0.85rem; opacity: 0.92; white-space: nowrap; }
+.order-card.is-pickup .card-header { background: #27ae60; }
+.order-card.has-driver .card-driver { background: #fdecea; border-color: #f5c6cb; }
+.order-card.has-driver .driver-label { color: #e74c3c; }
+.order-card.conflict { opacity: 0.5; filter: grayscale(50%); cursor: pointer; }
+.order-card.conflict .card-header { background: #95a5a6 !important; }
+
+.card-driver {
+  border-top: 1px solid #e8f5e9; background: #f1f8f1;
+  padding: 8px 14px; display: flex; align-items: center; gap: 8px;
+  font-size: 0.88rem;
+}
+.card-driver.hidden { display: none; }
+.driver-label { color: #27ae60; font-weight: bold; white-space: nowrap; }
+.driver-name { color: #2c3e50; flex: 1; }
+.btn-driver-edit, .btn-driver-del {
+  border: none; background: none; cursor: pointer; font-size: 0.82rem;
+  padding: 3px 7px; border-radius: 4px; font-family: inherit;
+}
+.btn-driver-edit { color: #4a90e2; }
+.btn-driver-edit:hover { background: #e3f0fc; }
+.btn-driver-del { color: #e74c3c; }
+.btn-driver-del:hover { background: #fdecea; }
+.btn-assign-driver {
+  border: none; background: none; cursor: pointer; font-size: 0.8rem;
+  color: #aaa; padding: 6px 14px; width: 100%; text-align: left;
+  font-family: inherit; border-top: 1px solid #f0f0f0;
+}
+.btn-assign-driver:hover { background: #f9f9f9; color: #27ae60; }
+.card-body { padding: 12px 14px; }
+.field-row { display: flex; margin-bottom: 6px; font-size: 0.88rem; line-height: 1.4; }
+.field-label { color: #999; min-width: 68px; flex-shrink: 0; }
+.field-value { color: #222; word-break: break-all; }
+.field-value.highlight { color: #e67e22; font-weight: bold; }
+
+.no-data { text-align: center; color: #aaa; padding: 40px 0; font-size: 1rem; }
+
+/* Share Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #fff; border-radius: 12px; width: 90%; max-width: 560px;
+  max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.modal-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.modal-header h2 { font-size: 1.1rem; color: #2c3e50; }
+.modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #aaa; padding: 0 4px; }
+.modal-close:hover { color: #555; }
+.modal-body { padding: 16px 20px; flex: 1; overflow-y: auto; }
+.driver-row { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+.driver-row label { font-weight: bold; white-space: nowrap; color: #555; }
+.driver-row input {
+  flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 0.95rem; font-family: inherit;
+}
+.driver-row input:focus { outline: none; border-color: #4a90e2; }
+.share-text {
+  width: 100%; height: 320px; padding: 10px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 0.88rem; font-family: "Microsoft JhengHei", monospace; resize: none;
+  line-height: 1.6; background: #fafafa;
+}
+.modal-footer { padding: 12px 20px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+.btn-regen { background: #4a90e2; color: #fff; }
+.btn-regen:hover { background: #357abd; }
+.btn-copy { background: #27ae60; color: #fff; }
+.btn-copy:hover { background: #1e8449; }
+.btn-copy.copied { background: #95a5a6; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>訂單排序系統</h1>
+
+  <div class="input-section">
+    <label>貼上訂單資訊（可一次貼入多筆）</label>
+    <form method="post" id="mainForm">
+      <input type="hidden" name="action" id="formAction" value="sort">
+      <textarea name="orders_text" placeholder="訂單號碼：...預約日期：4/21...（可連續貼多筆）">{{ raw_text }}</textarea>
+      <div class="btn-row">
+        <button type="submit" class="btn-sort" onclick="setAction('sort')">排序訂單</button>
+        <button type="submit" class="btn-clear" onclick="setAction('clear')">清除訂單</button>
+      </div>
+    </form>
+  </div>
+
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+  {% if orders %}
+  <!-- Date Tabs -->
+  <div class="tabs-bar" id="tabsBar">
+    <button class="tab-btn active" data-tab="all" onclick="switchTab('all', this)">
+      全部 <span class="tab-count" id="cnt-all"></span>
+    </button>
+    {% for tab in date_tabs %}
+    <button class="tab-btn" data-tab="{{ tab.date_key }}" onclick="switchTab('{{ tab.date_key }}', this)">
+      {{ tab.label }} {{ tab.display }} <span class="tab-count" id="cnt-{{ loop.index }}"></span>
+    </button>
+    {% endfor %}
+    {% if has_other %}
+    <button class="tab-btn" data-tab="其他" onclick="switchTab('其他', this)">
+      其他 <span class="tab-count" id="cnt-other"></span>
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="sel-info">已選 <span id="selCount">0</span> 筆</div>
+    <button class="btn-sm btn-selall" onclick="toggleSelectAll()">全選當前</button>
+    <button class="btn-sm btn-selall" onclick="clearSelection()">取消全選</button>
+    <button class="btn-sm btn-share" id="shareBtn" onclick="openShareModal()" disabled>打包分享</button>
+  </div>
+
+  <!-- Order Grid -->
+  <div class="order-grid" id="orderGrid">
+    {% for order in orders %}
+    {% set service = order.get("服務項目", "") %}
+    <div class="order-card" data-tab="{{ order._tab }}" data-id="{{ order._id }}" onclick="toggleCard(this, event)">
+      <div class="card-header">
+        <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
+        <div class="order-no">{{ order.get("訂單號碼", "—") }}</div>
+        <div class="date-time">{{ order.get("預約日期", "") }} {{ order.get("預約時間", "") }}</div>
+      </div>
+      <div class="card-body">
+        {% set skip = ["訂單號碼", "預約日期", "預約時間"] %}
+        {% for field in fields %}
+          {% if field not in skip and order.get(field) %}
+          <div class="field-row">
+            <span class="field-label">{{ field }}</span>
+            <span class="field-value {% if field == '付費方式' %}highlight{% endif %}">{{ order[field] }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+
+      <div class="card-driver {% if drivers.get(order._id | string) %}{% else %}hidden{% endif %}">
+        <span class="driver-label">司機：</span>
+        <span class="driver-name">{{ drivers.get(order._id | string, "") }}</span>
+        <button class="btn-driver-edit" onclick="editDriver(this, event)">編輯</button>
+        <button class="btn-driver-del" onclick="removeDriver(this, event)">刪除</button>
+      </div>
+      <button class="btn-assign-driver" {% if drivers.get(order._id | string) %}style="display:none"{% endif %} onclick="assignDriver(this, event)">＋ 指定司機</button>
+
+      {# Store all data as JSON for JS use #}
+      <script type="application/json" class="order-data">
+      {% set ns = namespace(pairs=[]) %}
+      {% for field in fields %}
+        {% if order.get(field) %}
+          {% set ns.pairs = ns.pairs + [(field | tojson) + ': ' + (order[field] | tojson)] %}
+        {% endif %}
+      {% endfor %}
+      { {{ ns.pairs | join(', ') }} }
+      </script>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="no-data">請在上方貼入訂單資訊後點擊「排序訂單」</div>
+  {% endif %}
+</div>
+
+<!-- Share Modal -->
+<div class="modal-overlay" id="shareModal" onclick="closeModalOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>打包分享訂單</h2>
+      <button class="modal-close" onclick="closeShareModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="driver-row">
+        <label>司機姓名：</label>
+        <input type="text" id="driverName" placeholder="請輸入司機姓名" oninput="regenerateText()">
+      </div>
+      <textarea class="share-text" id="shareText" readonly></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-regen" onclick="regenerateText()">重新產生</button>
+      <button class="btn-sm btn-copy" id="copyBtn" onclick="copyText()">複製文字</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentTab = "all";
+
+const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","接送地址","付費方式","備註"];
+
+function setAction(a) { document.getElementById("formAction").value = a; }
+
+// ── Tab switching ──
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".order-card").forEach(card => {
+    const match = tab === "all" || card.dataset.tab === tab;
+    card.classList.toggle("hidden", !match);
+  });
+  updateSelCount();
+}
+
+// ── Count badges ──
+function updateCounts() {
+  const all = document.querySelectorAll(".order-card");
+  document.getElementById("cnt-all").textContent = `(${all.length})`;
+  document.querySelectorAll(".tab-btn[data-tab]").forEach(btn => {
+    const tab = btn.dataset.tab;
+    if (tab === "all") return;
+    const n = document.querySelectorAll(`.order-card[data-tab="${tab}"]`).length;
+    const sp = btn.querySelector(".tab-count");
+    if (sp) sp.textContent = n ? `(${n})` : "";
+  });
+}
+
+// ── Selection ──
+function toggleCard(card, event) {
+  if (event.target.type === "checkbox") return;
+  const cb = card.querySelector(".card-checkbox");
+  cb.checked = !cb.checked;
+  card.classList.toggle("selected", cb.checked);
+  onCheckChange();
+}
+
+function onCheckChange() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    card.classList.toggle("selected", cb.checked);
+  });
+  updateSelCount();
+  updateConflicts();
+}
+
+function updateSelCount() {
+  const n = document.querySelectorAll(".order-card .card-checkbox:checked").length;
+  document.getElementById("selCount").textContent = n;
+  document.getElementById("shareBtn").disabled = n === 0;
+}
+
+function toggleSelectAll() {
+  const visibleCards = [...document.querySelectorAll(".order-card:not(.hidden)")];
+  const allChecked = visibleCards.every(c => c.querySelector(".card-checkbox").checked);
+  visibleCards.forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    cb.checked = !allChecked;
+    card.classList.toggle("selected", cb.checked);
+  });
+  updateSelCount();
+  updateConflicts();
+}
+
+function clearSelection() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    card.querySelector(".card-checkbox").checked = false;
+    card.classList.remove("selected");
+  });
+  updateSelCount();
+  updateConflicts();
+}
+
+// ── Share Modal ──
+function getSelectedOrders() {
+  return [...document.querySelectorAll(".order-card .card-checkbox:checked")]
+    .map(cb => {
+      const card = cb.closest(".order-card");
+      const data = JSON.parse(card.querySelector(".order-data").textContent);
+      data._driver = card.querySelector(".driver-name").textContent.trim();
+      return data;
+    });
+}
+
+function regenerateText() {
+  const modalDriver = document.getElementById("driverName").value.trim();
+  const orders = getSelectedOrders();
+  const lines = [];
+  if (modalDriver) lines.push(`司機：${modalDriver}`);
+  lines.push(`共 ${orders.length} 筆訂單`);
+  lines.push("─".repeat(20));
+  orders.forEach((o, i) => {
+    const driver = o._driver || modalDriver;
+    lines.push(`【${i+1}】${o["預約日期"] || ""} ${o["預約時間"] || ""}　${o["服務項目"] || ""}`);
+    if (driver) lines.push(`司機：${driver}`);
+    FIELDS_ORDER.forEach(f => {
+      if (["預約日期","預約時間","服務項目"].includes(f)) return;
+      if (o[f]) lines.push(`${f}：${o[f]}`);
+    });
+    if (i < orders.length - 1) lines.push("─".repeat(20));
+  });
+  document.getElementById("shareText").value = lines.join("\n");
+}
+
+function openShareModal() {
+  regenerateText();
+  document.getElementById("shareModal").classList.add("open");
+  const copyBtn = document.getElementById("copyBtn");
+  copyBtn.textContent = "複製文字";
+  copyBtn.classList.remove("copied");
+}
+
+function closeShareModal() {
+  document.getElementById("shareModal").classList.remove("open");
+}
+
+function closeModalOnOverlay(e) {
+  if (e.target === document.getElementById("shareModal")) closeShareModal();
+}
+
+function copyText() {
+  const text = document.getElementById("shareText").value;
+  const modalDriver = document.getElementById("driverName").value.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById("copyBtn");
+    btn.textContent = "已複製！";
+    btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = "複製文字"; btn.classList.remove("copied"); }, 2000);
+
+    if (modalDriver) {
+      document.querySelectorAll(".order-card .card-checkbox:checked").forEach(cb => {
+        const card = cb.closest(".order-card");
+        apiSetDriver(card.dataset.id, modalDriver);
+        setCardDriver(card, modalDriver);
+      });
+    }
+  });
+}
+
+// ── Conflict highlighting ──
+function parseMinutes(timeStr) {
+  if (!timeStr) return null;
+  let s = timeStr.replace("：", ":").trim();
+  const pm = s.includes("下午");
+  const am = s.includes("上午");
+  s = s.replace("上午", "").replace("下午", "").trim();
+  const m = s.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  let h = parseInt(m[1]), min = parseInt(m[2]);
+  if (pm && h < 12) h += 12;
+  if (am && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+function getOrderData(card) {
+  try { return JSON.parse(card.querySelector(".order-data").textContent); } catch { return {}; }
+}
+
+function updateConflicts() {
+  const windows = [];
+  document.querySelectorAll(".order-card .card-checkbox:checked").forEach(cb => {
+    const card = cb.closest(".order-card");
+    const data = getOrderData(card);
+    const service = data["服務項目"] || "";
+    const t = parseMinutes(data["預約時間"]);
+    const date = data["預約日期"] || "";
+    if (t === null) return;
+    if (service.includes("接機")) {
+      windows.push({ date, start: t - 30, end: t + 60 });
+    } else if (service.includes("送機")) {
+      windows.push({ date, start: t - 30, end: t + 30 });
+    }
+  });
+
+  document.querySelectorAll(".order-card").forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    if (cb.checked) { card.classList.remove("conflict"); return; }
+    const data = getOrderData(card);
+    const t = parseMinutes(data["預約時間"]);
+    const date = data["預約日期"] || "";
+    const inConflict = t !== null && windows.some(w => w.date === date && t > w.start && t < w.end);
+    card.classList.toggle("conflict", inConflict);
+  });
+}
+
+// ── Driver assignment ──
+function apiSetDriver(orderId, name) {
+  return fetch("/api/drivers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order_id: orderId, name: name })
+  });
+}
+
+function setCardDriver(card, name) {
+  const driverDiv = card.querySelector(".card-driver");
+  const assignBtn = card.querySelector(".btn-assign-driver");
+  if (name) {
+    driverDiv.querySelector(".driver-name").textContent = name;
+    driverDiv.classList.remove("hidden");
+    assignBtn.style.display = "none";
+    card.classList.add("has-driver");
+  } else {
+    driverDiv.classList.add("hidden");
+    assignBtn.style.display = "";
+    card.classList.remove("has-driver");
+  }
+}
+
+function assignDriver(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  const name = prompt("請輸入司機姓名：");
+  if (name && name.trim()) {
+    apiSetDriver(card.dataset.id, name.trim());
+    setCardDriver(card, name.trim());
+  }
+}
+
+function editDriver(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  const current = card.querySelector(".driver-name").textContent;
+  const name = prompt("修改司機姓名：", current);
+  if (name && name.trim()) {
+    apiSetDriver(card.dataset.id, name.trim());
+    setCardDriver(card, name.trim());
+  }
+}
+
+function removeDriver(btn, event) {
+  event.stopPropagation();
+  if (!confirm("確定要移除指定司機？")) return;
+  const card = btn.closest(".order-card");
+  apiSetDriver(card.dataset.id, "");
+  setCardDriver(card, null);
+}
+
+function initServiceTypes() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    const service = (getOrderData(card)["服務項目"] || "");
+    if (service.includes("接機")) card.classList.add("is-pickup");
+  });
+}
+
+// Init
+updateCounts();
+updateSelCount();
+initServiceTypes();
+
+// init has-driver class for cards already with drivers
+document.querySelectorAll(".order-card").forEach(card => {
+  if (card.querySelector(".driver-name").textContent.trim()) {
+    card.classList.add("has-driver");
+  }
+});
+</script>
+</body>
+</html>
