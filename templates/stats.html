@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>司機統計</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5; color: #333; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+
+/* Nav */
+.nav-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.nav-bar h1 { font-size: 1.6rem; color: #2c3e50; flex: 1; text-align: center; }
+.btn-nav { padding: 8px 18px; background: #4a90e2; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-family: inherit; text-decoration: none; }
+.btn-nav:hover { background: #357abd; }
+
+/* Filter section */
+.filter-section {
+  background: #fff; border-radius: 10px; padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px;
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;
+}
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 0.82rem; color: #888; font-weight: bold; }
+.filter-group select, .filter-group input {
+  padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 0.9rem; font-family: inherit; background: #fff;
+}
+.filter-group select:focus, .filter-group input:focus { outline: none; border-color: #4a90e2; }
+.btn-row { display: flex; gap: 8px; align-items: flex-end; }
+button { padding: 9px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-family: inherit; transition: background 0.2s; }
+.btn-search { background: #4a90e2; color: #fff; }
+.btn-search:hover { background: #357abd; }
+.btn-reset { background: #e0e0e0; color: #555; }
+.btn-reset:hover { background: #c8c8c8; }
+
+/* Summary */
+.summary-bar {
+  background: #fff; border-radius: 8px; padding: 12px 18px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px;
+  font-size: 0.92rem; color: #555;
+}
+.summary-bar strong { color: #2c3e50; }
+
+/* Stats table */
+.stats-section { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; margin-bottom: 24px; }
+.section-title { background: #4a90e2; color: #fff; padding: 12px 18px; font-size: 1rem; font-weight: bold; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: #f7f9fc; padding: 10px 14px; text-align: center;
+  font-size: 0.85rem; color: #666; border-bottom: 2px solid #eee;
+}
+thead th:first-child { text-align: left; }
+tbody td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; text-align: center; }
+tbody td:first-child { text-align: left; font-weight: bold; color: #2c3e50; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover { background: #f9fbff; }
+.num-total { font-weight: bold; color: #2c3e50; }
+.num-cash { color: #e67e22; font-weight: bold; }
+.num-transfer { color: #27ae60; font-weight: bold; }
+.num-other { color: #95a5a6; }
+.tfoot-row td { background: #f7f9fc; font-weight: bold; border-top: 2px solid #ddd; }
+
+/* Order results */
+.results-section { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+.order-list { padding: 0 16px 16px; }
+.order-item {
+  border: 1px solid #e8eef5; border-radius: 8px; margin-top: 12px; overflow: hidden;
+}
+.order-item-header {
+  background: #4a90e2; color: #fff; padding: 10px 14px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem;
+}
+.order-item-header .order-no { font-weight: bold; }
+.order-item-header .date-time { opacity: 0.9; }
+.order-item-body { padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 6px 24px; }
+.field-row { display: flex; gap: 6px; font-size: 0.87rem; }
+.field-label { color: #999; min-width: 64px; }
+.field-value { color: #222; }
+.field-value.highlight { color: #e67e22; font-weight: bold; }
+.order-item-driver {
+  background: #fdecea; border-top: 1px solid #f5c6cb;
+  padding: 8px 14px; font-size: 0.87rem; display: flex; align-items: center; gap: 6px;
+}
+.driver-label { color: #e74c3c; font-weight: bold; }
+.no-data { text-align: center; color: #aaa; padding: 32px 0; font-size: 0.95rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="/" class="btn-nav">← 訂單排序</a>
+    <h1>司機接單統計</h1>
+    <div style="width:90px"></div>
+  </div>
+
+  <!-- Filter -->
+  <form method="get" action="/stats">
+    <div class="filter-section">
+      <div class="filter-group">
+        <label>月份</label>
+        <select name="month">
+          {% for m in range(1, 13) %}
+          <option value="{{ m }}" {% if m == filter_month %}selected{% endif %}>{{ m }} 月</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>指定日期（格式：月/日，如 4/18）</label>
+        <input type="text" name="date" value="{{ filter_date }}" placeholder="留空則顯示整月">
+      </div>
+      <div class="filter-group">
+        <label>乘客電話查詢</label>
+        <input type="text" name="phone" value="{{ search_phone }}" placeholder="輸入電話號碼">
+      </div>
+      <div class="btn-row">
+        <button type="submit" class="btn-search">查詢</button>
+        <a href="/stats" class="btn-reset" style="text-decoration:none; display:inline-block; padding:9px 20px;">重設</a>
+      </div>
+    </div>
+  </form>
+
+  <!-- Summary -->
+  <div class="summary-bar">
+    顯示：<strong>{{ filter_month }} 月</strong>
+    {% if filter_date %}的 <strong>{{ filter_date }}</strong>{% endif %}
+    {% if search_phone %}，電話含「<strong>{{ search_phone }}</strong>」{% endif %}
+    &nbsp;—&nbsp; 共 <strong>{{ working | length }}</strong> 筆已指定司機訂單
+  </div>
+
+  <!-- Driver Stats Table -->
+  <div class="stats-section">
+    <div class="section-title">司機接單統計</div>
+    {% if driver_stats %}
+    <table>
+      <thead>
+        <tr>
+          <th>司機姓名</th>
+          <th>總計</th>
+          <th>下車付現</th>
+          <th>匯款預付</th>
+          <th>其他</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for name, s in driver_stats %}
+        <tr>
+          <td>{{ name }}</td>
+          <td><span class="num-total">{{ s.total }}</span></td>
+          <td><span class="num-cash">{{ s.cash if s.cash else '—' }}</span></td>
+          <td><span class="num-transfer">{{ s.transfer if s.transfer else '—' }}</span></td>
+          <td><span class="num-other">{{ s.other if s.other else '—' }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="tfoot-row">
+          <td>合計</td>
+          <td>{{ working | length }}</td>
+          <td>{{ driver_stats | map(attribute='1') | map(attribute='cash') | sum }}</td>
+          <td>{{ driver_stats | map(attribute='1') | map(attribute='transfer') | sum }}</td>
+          <td>{{ driver_stats | map(attribute='1') | map(attribute='other') | sum }}</td>
+        </tr>
+      </tfoot>
+    </table>
+    {% else %}
+    <div class="no-data">此期間沒有已指定司機的訂單</div>
+    {% endif %}
+  </div>
+
+  <!-- Phone Search Results -->
+  {% if search_phone %}
+  <div class="results-section">
+    <div class="section-title">
+      電話「{{ search_phone }}」的訂單（共 {{ phone_orders | length }} 筆）
+    </div>
+    <div class="order-list">
+      {% if phone_orders %}
+        {% set skip = ["訂單號碼", "預約日期", "預約時間"] %}
+        {% for order in phone_orders %}
+        <div class="order-item">
+          <div class="order-item-header">
+            <span class="order-no">{{ order.get("訂單號碼", "—") }}</span>
+            <span class="date-time">{{ order.get("預約日期", "") }} {{ order.get("預約時間", "") }}</span>
+          </div>
+          <div class="order-item-body">
+            {% for field in fields %}
+              {% if field not in skip and order.get(field) %}
+              <div class="field-row">
+                <span class="field-label">{{ field }}</span>
+                <span class="field-value {% if field == '付費方式' %}highlight{% endif %}">{{ order[field] }}</span>
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          <div class="order-item-driver">
+            <span class="driver-label">指定司機：</span>
+            <span>{{ order._driver }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="no-data">找不到符合的訂單</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+</body>
+</html>
