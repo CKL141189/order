@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect
 import re
 import sqlite3
 import json
@@ -153,57 +153,36 @@ def save_orders(orders):
             clean = {k: v for k, v in o.items() if not k.startswith("_")}
             conn.execute("INSERT INTO orders (data) VALUES (?)", (json.dumps(clean, ensure_ascii=False),))
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def index():
-    error = ""
-    raw_text = ""
+    return render_template("index.html")
 
-    if request.method == "POST":
-        action = request.form.get("action", "sort")
-        if action == "sort":
-            raw_text = request.form.get("orders_text", "")
-            new_orders = parse_orders(raw_text)
-            if raw_text.strip() and not new_orders:
-                error = "無法解析訂單，請確認格式是否正確。"
-            else:
-                existing = load_orders()
-                existing_map = {o.get("訂單號碼"): i for i, o in enumerate(existing)}
-                for o in new_orders:
-                    no = o.get("訂單號碼")
-                    if no in existing_map:
-                        idx = existing_map[no]
-                        existing[idx].update({k: v for k, v in o.items() if not k.startswith("_")})
-                    else:
-                        existing.append(o)
-                existing.sort(key=order_sort_key)
-                save_orders(existing)
-        elif action == "clear":
-            with get_db() as conn:
-                conn.execute("DELETE FROM orders")
-                conn.execute("DELETE FROM drivers")
-
+@app.route("/orders", methods=["GET"])
+def orders_page():
     orders = load_orders()
     date_tabs = get_date_tabs()
     tab_keys = {t["date_key"] for t in date_tabs}
     for order in orders:
         order["_tab"] = order.get("預約日期", "") if order.get("預約日期", "") in tab_keys else "其他"
-
     has_other = any(o["_tab"] == "其他" for o in orders)
-
     with get_db() as conn:
         driver_rows = conn.execute("SELECT order_id, name FROM drivers").fetchall()
     drivers = {row["order_id"]: row["name"] for row in driver_rows}
-
     return render_template(
-        "index.html",
+        "orders.html",
         orders=orders,
-        raw_text=raw_text,
-        error=error,
         fields=FIELDS,
         date_tabs=date_tabs,
         has_other=has_other,
         drivers=drivers,
     )
+
+@app.route("/clear", methods=["POST"])
+def clear_orders():
+    with get_db() as conn:
+        conn.execute("DELETE FROM orders")
+        conn.execute("DELETE FROM drivers")
+    return redirect("/orders")
 
 @app.route("/api/parse", methods=["POST"])
 def api_parse():

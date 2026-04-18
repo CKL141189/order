@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>訂單列表</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5; color: #333; }
+.container { max-width: 1100px; margin: 30px auto; padding: 0 20px 60px; }
+
+/* Nav */
+.nav-bar { display: flex; align-items: center; margin-bottom: 24px; gap: 10px; }
+.nav-bar h1 { font-size: 1.6rem; color: #2c3e50; flex: 1; text-align: center; margin: 0; }
+.btn-nav { padding: 8px 18px; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-family: inherit; text-decoration: none; display: inline-block; transition: background 0.2s; white-space: nowrap; }
+.btn-nav.blue { background: #4a90e2; }
+.btn-nav.blue:hover { background: #357abd; }
+.btn-nav.green { background: #27ae60; }
+.btn-nav.green:hover { background: #1e8449; }
+.btn-nav.red { background: #e74c3c; }
+.btn-nav.red:hover { background: #c0392b; }
+
+/* Date Tabs */
+.tabs-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab-btn {
+  padding: 7px 16px; border: 2px solid #ddd; border-radius: 20px;
+  background: #fff; cursor: pointer; font-size: 0.88rem; font-family: inherit;
+  transition: all 0.15s; white-space: nowrap;
+}
+.tab-btn:hover { border-color: #4a90e2; color: #4a90e2; }
+.tab-btn.active { background: #4a90e2; border-color: #4a90e2; color: #fff; font-weight: bold; }
+.tab-count { font-size: 0.78rem; opacity: 0.85; margin-left: 4px; }
+
+/* View Toggle */
+.view-toggle-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+.view-toggle-bar span { font-size: 0.85rem; color: #888; margin-right: 4px; }
+.btn-view {
+  padding: 6px 18px; border: 2px solid #ddd; border-radius: 20px;
+  background: #fff; cursor: pointer; font-size: 0.88rem; font-family: inherit; transition: all 0.15s;
+}
+.btn-view:hover { border-color: #27ae60; color: #27ae60; }
+.btn-view.active { background: #27ae60; border-color: #27ae60; color: #fff; font-weight: bold; }
+
+/* Simple card view */
+.card-simple { padding: 11px 14px; background: #f8fafb; border-bottom: 1px solid #eef2f7; word-break: break-all; }
+.card-simple.hidden { display: none; }
+.simple-l1 { font-size: 0.93rem; font-weight: bold; color: #2c3e50; line-height: 1.5; }
+.simple-l2 { font-size: 0.9rem; color: #e67e22; margin-top: 4px; }
+.simple-l3 { font-size: 0.85rem; color: #e74c3c; margin-top: 3px; }
+
+/* Toolbar */
+.toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: #fff; border-radius: 8px; padding: 10px 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px;
+}
+.toolbar .sel-info { color: #666; font-size: 0.9rem; flex: 1; min-width: 100px; }
+.toolbar .sel-info span { font-weight: bold; color: #2c3e50; }
+.btn-sm { padding: 6px 14px; font-size: 0.85rem; border-radius: 5px; border: none; cursor: pointer; font-family: inherit; }
+.btn-selall { background: #f0f0f0; color: #444; }
+.btn-selall:hover { background: #e0e0e0; }
+.btn-share { background: #27ae60; color: #fff; }
+.btn-share:hover { background: #1e8449; }
+.btn-share:disabled { background: #a8d5b5; cursor: not-allowed; }
+.btn-copy-bulk { background: #4a90e2; color: #fff; }
+.btn-copy-bulk:hover:not(:disabled) { background: #357abd; }
+.btn-copy-bulk:disabled { background: #b0c8e8; cursor: not-allowed; }
+.btn-share-bulk { background: #27ae60; color: #fff; }
+.btn-share-bulk:hover:not(:disabled) { background: #1e8449; }
+.btn-share-bulk:disabled { background: #a8d5b5; cursor: not-allowed; }
+.toolbar-divider { width: 1px; height: 22px; background: #ddd; flex-shrink: 0; }
+.toolbar-group-label { font-size: 0.8rem; color: #999; white-space: nowrap; }
+
+/* Grid */
+.order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+.order-card {
+  background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden; transition: box-shadow 0.2s, transform 0.15s;
+  position: relative; cursor: pointer;
+}
+.order-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.13); }
+.order-card.selected { box-shadow: 0 0 0 3px #4a90e2; }
+.order-card.hidden { display: none; }
+
+.card-checkbox { width: 17px; height: 17px; accent-color: #fff; cursor: pointer; flex-shrink: 0; margin-right: 8px; }
+.card-header { background: #4a90e2; color: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+.card-header-main { display: flex; align-items: center; width: 100%; }
+.card-header-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; }
+.card-header .date-time { font-size: 0.85rem; opacity: 0.92; white-space: nowrap; }
+.btn-card-action {
+  border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.15);
+  color: #fff; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+  font-size: 0.78rem; font-family: inherit; white-space: nowrap; transition: background 0.15s;
+}
+.btn-card-action:hover { background: rgba(255,255,255,0.32); }
+.btn-card-action.done { background: rgba(255,255,255,0.45); }
+
+/* Date range panel */
+.date-range-panel {
+  background: #fff; border: 1px solid #e0e0e0; border-radius: 8px;
+  padding: 10px 16px; margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.date-range-panel.hidden { display: none; }
+.cal-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cal-nav-btn { background: #f0f0f0; border: none; border-radius: 5px; width: 28px; height: 28px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
+.cal-nav-btn:hover { background: #d0e4f7; }
+.cal-title { font-weight: bold; font-size: 0.95rem; color: #2c3e50; min-width: 100px; text-align: center; }
+.cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, 34px); gap: 3px; }
+.cal-weekdays span { font-size: 0.75rem; color: #999; text-align: center; padding: 3px 0; }
+.cal-day { width: 34px; height: 30px; border: none; background: #f5f5f5; border-radius: 4px; cursor: pointer; font-size: 0.83rem; font-family: inherit; }
+.cal-day:hover:not(.empty) { background: #d0e4f7; }
+.cal-day.empty { background: transparent; cursor: default; }
+.cal-day.today { border: 2px solid #4a90e2; font-weight: bold; }
+.cal-day.sel-start, .cal-day.sel-end { background: #4a90e2; color: #fff; font-weight: bold; }
+.cal-day.in-range { background: #cce0f5; }
+.cal-range-info { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 0.85rem; color: #555; }
+.btn-range-clear { background: #e0e0e0; color: #555; padding: 4px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-family: inherit; }
+.btn-range-clear:hover { background: #c8c8c8; }
+
+/* Edit modal */
+.edit-field-row { margin-bottom: 12px; }
+.edit-field-row label { display: block; font-size: 0.8rem; color: #888; margin-bottom: 4px; }
+.edit-field-row input, .edit-field-row textarea {
+  width: 100%; padding: 7px 10px; border: 1px solid #ddd; border-radius: 5px;
+  font-size: 0.9rem; font-family: inherit; box-sizing: border-box;
+}
+.edit-field-row input:focus, .edit-field-row textarea:focus { outline: none; border-color: #4a90e2; }
+.edit-field-row textarea { height: 70px; resize: vertical; }
+.btn-save { background: #4a90e2; color: #fff; }
+.btn-save:hover { background: #357abd; }
+.order-card.is-pickup .card-header { background: #27ae60; }
+.order-card.has-driver .card-driver { background: #fdecea; border-color: #f5c6cb; }
+.order-card.has-driver .driver-label { color: #e74c3c; }
+.order-card.conflict { opacity: 0.5; filter: grayscale(50%); cursor: pointer; }
+.order-card.conflict .card-header { background: #95a5a6 !important; }
+
+.card-driver {
+  border-top: 1px solid #e8f5e9; background: #f1f8f1;
+  padding: 8px 14px; display: flex; align-items: center; gap: 8px; font-size: 0.88rem;
+}
+.card-driver.hidden { display: none; }
+.card-body.hidden { display: none; }
+.driver-label { color: #27ae60; font-weight: bold; white-space: nowrap; }
+.driver-name { color: #2c3e50; flex: 1; }
+.btn-driver-edit, .btn-driver-del {
+  border: none; background: none; cursor: pointer; font-size: 0.82rem;
+  padding: 3px 7px; border-radius: 4px; font-family: inherit;
+}
+.btn-driver-edit { color: #4a90e2; }
+.btn-driver-edit:hover { background: #e3f0fc; }
+.btn-driver-del { color: #e74c3c; }
+.btn-driver-del:hover { background: #fdecea; }
+.btn-assign-driver {
+  border: none; background: none; cursor: pointer; font-size: 0.8rem;
+  color: #aaa; padding: 6px 14px; width: 100%; text-align: left;
+  font-family: inherit; border-top: 1px solid #f0f0f0;
+}
+.btn-assign-driver:hover { background: #f9f9f9; color: #27ae60; }
+.card-body { padding: 12px 14px; }
+.field-row { display: flex; margin-bottom: 6px; font-size: 0.88rem; line-height: 1.4; }
+.field-label { color: #999; min-width: 68px; flex-shrink: 0; }
+.field-value { color: #222; word-break: break-all; }
+.field-value.highlight { color: #e67e22; font-weight: bold; }
+
+.no-data { text-align: center; color: #aaa; padding: 60px 0; font-size: 1rem; }
+.no-data a { color: #4a90e2; text-decoration: none; }
+.no-data a:hover { text-decoration: underline; }
+
+/* Share Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #fff; border-radius: 12px; width: 90%; max-width: 560px;
+  max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+.modal-header { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.modal-header h2 { font-size: 1.1rem; color: #2c3e50; }
+.modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #aaa; padding: 0 4px; }
+.modal-close:hover { color: #555; }
+.modal-body { padding: 16px 20px; flex: 1; overflow-y: auto; }
+.driver-row { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+.driver-row label { font-weight: bold; white-space: nowrap; color: #555; }
+.driver-row input { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; font-family: inherit; }
+.driver-row input:focus { outline: none; border-color: #4a90e2; }
+.share-text {
+  width: 100%; height: 320px; padding: 10px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 0.88rem; font-family: "Microsoft JhengHei", monospace; resize: none;
+  line-height: 1.6; background: #fafafa;
+}
+.modal-footer { padding: 12px 20px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end; }
+.btn-regen { background: #4a90e2; color: #fff; }
+.btn-regen:hover { background: #357abd; }
+.btn-copy { background: #27ae60; color: #fff; }
+.btn-copy:hover { background: #1e8449; }
+.btn-copy.copied { background: #95a5a6; }
+button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: background 0.2s; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="/" class="btn-nav blue">← 新增訂單</a>
+    <h1>訂單列表</h1>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <form method="post" action="/clear" style="display:inline;" onsubmit="return confirm('確定清除所有訂單及司機資料？')">
+        <button type="submit" class="btn-nav red">清除全部</button>
+      </form>
+      <a href="/stats" class="btn-nav green">司機統計 →</a>
+    </div>
+  </div>
+
+  {% if orders %}
+  <!-- Date Tabs -->
+  <div class="tabs-bar" id="tabsBar">
+    <button class="tab-btn date-tab-btn active" data-tab="all" onclick="switchTab('all', this)">
+      全部 <span class="tab-count" id="cnt-all"></span>
+    </button>
+    {% for tab in date_tabs %}
+    <button class="tab-btn date-tab-btn" data-tab="{{ tab.date_key }}" onclick="switchTab('{{ tab.date_key }}', this)">
+      {{ tab.label }} {{ tab.display }} <span class="tab-count" id="cnt-{{ loop.index }}"></span>
+    </button>
+    {% endfor %}
+    {% if has_other %}
+    <button class="tab-btn date-tab-btn" data-tab="其他" onclick="switchTab('其他', this)">
+      其他 <span class="tab-count" id="cnt-other"></span>
+    </button>
+    {% endif %}
+    <button class="tab-btn date-tab-btn" data-tab="custom" onclick="switchTab('custom', this)">
+      自訂區間
+    </button>
+  </div>
+
+  <!-- Date Range Calendar -->
+  <div class="date-range-panel hidden" id="dateRangePanel">
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calPrevMonth()">‹</button>
+      <span class="cal-title" id="calTitle"></span>
+      <button class="cal-nav-btn" onclick="calNextMonth()">›</button>
+    </div>
+    <div class="cal-weekdays">
+      <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="cal-range-info">
+      <span id="calRangeText">點選開始日期</span>
+      <button class="btn-range-clear" onclick="clearDateRange()">清除</button>
+    </div>
+  </div>
+
+  <!-- View Toggle -->
+  <div class="view-toggle-bar">
+    <span>訂單顯示：</span>
+    <button class="btn-view active" data-view="detailed" onclick="switchView('detailed', this)">詳細訂單</button>
+    <button class="btn-view" data-view="simple" onclick="switchView('simple', this)">簡易訂單</button>
+  </div>
+
+  <!-- Driver Filter -->
+  <div class="tabs-bar" id="driverFilterBar">
+    <button class="tab-btn driver-filter-btn active" data-driver-filter="all" onclick="switchDriverFilter('all', this)">全部司機</button>
+    <button class="tab-btn driver-filter-btn" data-driver-filter="assigned" onclick="switchDriverFilter('assigned', this)">
+      已指定司機 <span class="tab-count" id="cnt-assigned"></span>
+    </button>
+    <button class="tab-btn driver-filter-btn" data-driver-filter="unassigned" onclick="switchDriverFilter('unassigned', this)">
+      未指定司機 <span class="tab-count" id="cnt-unassigned"></span>
+    </button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="sel-info">已選 <span id="selCount">0</span> 筆</div>
+    <button class="btn-sm btn-selall" onclick="toggleSelectAll()">全選當前</button>
+    <button class="btn-sm btn-selall" onclick="clearSelection()">取消全選</button>
+    <div class="toolbar-divider"></div>
+    <span class="toolbar-group-label">複製</span>
+    <button class="btn-sm btn-copy-bulk" id="copySimpleBtn" onclick="copySelected('simple')" disabled>簡易</button>
+    <button class="btn-sm btn-copy-bulk" id="copyDetailBtn" onclick="copySelected('detailed')" disabled>詳細</button>
+    <div class="toolbar-divider"></div>
+    <span class="toolbar-group-label">分享</span>
+    <button class="btn-sm btn-share-bulk" id="shareSimpleBtn" onclick="shareSelected('simple')" disabled>簡易</button>
+    <button class="btn-sm btn-share-bulk" id="shareDetailBtn" onclick="shareSelected('detailed')" disabled>詳細</button>
+    <div class="toolbar-divider"></div>
+    <button class="btn-sm btn-share" id="shareBtn" onclick="openShareModal()" disabled>打包分享</button>
+  </div>
+
+  <!-- Order Grid -->
+  <div class="order-grid" id="orderGrid">
+    {% for order in orders %}
+    {% set service = order.get("服務項目", "") %}
+    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-id="{{ order._id }}" onclick="toggleCard(this, event)">
+      <div class="card-header">
+        <div class="card-header-main">
+          <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
+          <div class="order-no">{{ order.get("訂單號碼", "—") }}</div>
+          <div class="date-time">{{ order.get("預約日期", "") }} {{ order.get("預約時間", "") }}</div>
+        </div>
+        <div class="card-header-actions">
+          <button class="btn-card-action btn-edit-card" onclick="openEditModal(this, event)">編輯</button>
+          <button class="btn-card-action btn-copy-card" onclick="copyCard(this, event)">複製</button>
+          <button class="btn-card-action btn-share-card" onclick="shareCard(this, event)">分享</button>
+        </div>
+      </div>
+      <div class="card-simple hidden"></div>
+      <div class="card-body">
+        {% set skip = ["訂單號碼", "預約日期", "預約時間"] %}
+        {% for field in fields %}
+          {% if field not in skip and order.get(field) %}
+          <div class="field-row">
+            <span class="field-label">{{ field }}</span>
+            <span class="field-value {% if field == '付費方式' %}highlight{% endif %}">{{ order[field] }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="card-driver {% if drivers.get(order._id | string) %}{% else %}hidden{% endif %}">
+        <span class="driver-label">司機：</span>
+        <span class="driver-name">{{ drivers.get(order._id | string, "") }}</span>
+        <button class="btn-driver-edit" onclick="editDriver(this, event)">編輯</button>
+        <button class="btn-driver-del" onclick="removeDriver(this, event)">刪除</button>
+      </div>
+      <button class="btn-assign-driver" {% if drivers.get(order._id | string) %}style="display:none"{% endif %} onclick="assignDriver(this, event)">＋ 指定司機</button>
+      <script type="application/json" class="order-data">
+      {% set ns = namespace(pairs=[]) %}
+      {% for field in fields %}
+        {% if order.get(field) %}
+          {% set ns.pairs = ns.pairs + [(field | tojson) + ': ' + (order[field] | tojson)] %}
+        {% endif %}
+      {% endfor %}
+      { {{ ns.pairs | join(', ') }} }
+      </script>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="no-data">
+    <p>尚無訂單</p>
+    <p style="margin-top:14px;"><a href="/">← 前往新增訂單</a></p>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal" onclick="closeEditOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>修改訂單</h2>
+      <button class="modal-close" onclick="closeEditModal()">×</button>
+    </div>
+    <div class="modal-body" id="editFields"></div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-save" onclick="saveOrder()">儲存</button>
+      <button class="btn-sm" style="background:#e0e0e0;color:#555;" onclick="closeEditModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share Modal -->
+<div class="modal-overlay" id="shareModal" onclick="closeModalOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>打包分享訂單</h2>
+      <button class="modal-close" onclick="closeShareModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="driver-row">
+        <label>司機姓名：</label>
+        <input type="text" id="driverName" placeholder="請輸入司機姓名" oninput="regenerateText()">
+      </div>
+      <textarea class="share-text" id="shareText" readonly></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-sm btn-regen" onclick="regenerateText()">重新產生</button>
+      <button class="btn-sm btn-copy" id="copyBtn" onclick="copyText()">複製文字</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentTab = "all";
+let currentDriverFilter = "all";
+let currentView = "detailed";
+let dateRangeFrom = null;
+let dateRangeTo = null;
+
+function dateToNum(s) {
+  if (!s) return null;
+  const p = s.split("/").map(Number);
+  return p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) ? p[0] * 100 + p[1] : null;
+}
+
+// ── Calendar ──
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth() + 1;
+let calRangeStart = null;
+let calRangeEnd = null;
+
+function renderCalendar() {
+  const y = calYear, m = calMonth;
+  document.getElementById("calTitle").textContent = `${y}年 ${m}月`;
+  const firstDow = new Date(y, m - 1, 1).getDay();
+  const totalDays = new Date(y, m, 0).getDate();
+  const today = new Date();
+  const grid = document.getElementById("calGrid");
+  grid.innerHTML = "";
+  for (let i = 0; i < firstDow; i++) {
+    const el = document.createElement("div"); el.className = "cal-day empty"; grid.appendChild(el);
+  }
+  for (let d = 1; d <= totalDays; d++) {
+    const btn = document.createElement("button");
+    btn.className = "cal-day"; btn.textContent = d;
+    if (y === today.getFullYear() && m === today.getMonth() + 1 && d === today.getDate())
+      btn.classList.add("today");
+    const n = y * 10000 + m * 100 + d;
+    const sn = calRangeStart ? calRangeStart.year * 10000 + calRangeStart.month * 100 + calRangeStart.day : null;
+    const en = calRangeEnd   ? calRangeEnd.year   * 10000 + calRangeEnd.month   * 100 + calRangeEnd.day   : null;
+    if (sn && n === sn) btn.classList.add("sel-start");
+    if (en && n === en) btn.classList.add("sel-end");
+    if (sn && en && n > sn && n < en) btn.classList.add("in-range");
+    btn.onclick = () => calSelectDay(y, m, d);
+    grid.appendChild(btn);
+  }
+  const txt = document.getElementById("calRangeText");
+  if (!calRangeStart) txt.textContent = "點選開始日期";
+  else if (!calRangeEnd) txt.textContent = `${calRangeStart.month}/${calRangeStart.day} 起，再點結束日期`;
+  else txt.textContent = `${calRangeStart.month}/${calRangeStart.day} — ${calRangeEnd.month}/${calRangeEnd.day}`;
+}
+
+function calSelectDay(y, m, d) {
+  const n = y * 10000 + m * 100 + d;
+  const sn = calRangeStart ? calRangeStart.year * 10000 + calRangeStart.month * 100 + calRangeStart.day : null;
+  if (!calRangeStart || calRangeEnd || (sn && n < sn)) {
+    calRangeStart = { year: y, month: m, day: d }; calRangeEnd = null;
+  } else if (sn && n > sn) {
+    calRangeEnd = { year: y, month: m, day: d };
+    dateRangeFrom = `${calRangeStart.month}/${calRangeStart.day}`;
+    dateRangeTo   = `${calRangeEnd.month}/${calRangeEnd.day}`;
+    applyFilters();
+  } else {
+    calRangeStart = null; calRangeEnd = null;
+    dateRangeFrom = null; dateRangeTo = null;
+    applyFilters();
+  }
+  renderCalendar();
+}
+
+function calPrevMonth() { calMonth--; if (calMonth < 1) { calMonth = 12; calYear--; } renderCalendar(); }
+function calNextMonth() { calMonth++; if (calMonth > 12) { calMonth = 1; calYear++; } renderCalendar(); }
+
+function clearDateRange() {
+  calRangeStart = null; calRangeEnd = null;
+  dateRangeFrom = null; dateRangeTo = null;
+  renderCalendar(); applyFilters();
+}
+
+// ── Edit Modal ──
+let editingCardEl = null;
+
+function openEditModal(btn, event) {
+  event.stopPropagation();
+  editingCardEl = btn.closest(".order-card");
+  const data = getOrderData(editingCardEl);
+  const container = document.getElementById("editFields");
+  container.innerHTML = "";
+  const multiLine = new Set(["接送地址", "接送順序", "連繫地址", "備註"]);
+  FIELDS_ORDER.forEach(f => {
+    const row = document.createElement("div");
+    row.className = "edit-field-row";
+    const val = (data[f] || "").replace(/"/g, "&quot;");
+    if (multiLine.has(f)) {
+      row.innerHTML = `<label>${f}</label><textarea name="${f}">${data[f] || ""}</textarea>`;
+    } else {
+      row.innerHTML = `<label>${f}</label><input type="text" name="${f}" value="${val}">`;
+    }
+    container.appendChild(row);
+  });
+  document.getElementById("editModal").classList.add("open");
+}
+
+function closeEditModal() { document.getElementById("editModal").classList.remove("open"); }
+function closeEditOnOverlay(e) { if (e.target === document.getElementById("editModal")) closeEditModal(); }
+
+function saveOrder() {
+  const card = editingCardEl;
+  const newData = {};
+  document.querySelectorAll("#editFields [name]").forEach(el => { newData[el.name] = el.value.trim(); });
+  fetch(`/api/orders/${card.dataset.id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(newData)
+  }).then(r => r.json()).then(res => {
+    if (res.ok) { updateCardDOM(card, newData); closeEditModal(); }
+  });
+}
+
+function updateCardDOM(card, data) {
+  const script = card.querySelector(".order-data");
+  const merged = { ...getOrderData(card), ...data };
+  script.textContent = JSON.stringify(merged);
+  card.querySelector(".order-no").textContent = data["訂單號碼"] || "—";
+  card.querySelector(".date-time").textContent = `${data["預約日期"] || ""} ${data["預約時間"] || ""}`.trim();
+  card.dataset.date = data["預約日期"] || "";
+  const tabBtns = document.querySelectorAll(".date-tab-btn[data-tab]");
+  let newTab = "其他";
+  tabBtns.forEach(b => { if (b.dataset.tab === data["預約日期"]) newTab = data["預約日期"]; });
+  card.dataset.tab = newTab;
+  const skip = new Set(["訂單號碼", "預約日期", "預約時間"]);
+  const body = card.querySelector(".card-body");
+  body.innerHTML = "";
+  FIELDS_ORDER.forEach(f => {
+    if (!skip.has(f) && merged[f]) {
+      const row = document.createElement("div");
+      row.className = "field-row";
+      row.innerHTML = `<span class="field-label">${f}</span><span class="field-value${f === "付費方式" ? " highlight" : ""}">${merged[f]}</span>`;
+      body.appendChild(row);
+    }
+  });
+  const { line1, line2, line3 } = generateSimpleParts(merged);
+  card.querySelector(".card-simple").innerHTML =
+    `<div class="simple-l1">${line1}</div>` +
+    `<div class="simple-l2">${line2}</div>` +
+    (line3 ? `<div class="simple-l3">${line3}</div>` : "");
+  const service = merged["服務項目"] || "";
+  card.classList.toggle("is-pickup", service.includes("接機"));
+  updateCounts();
+}
+
+// ── Simple line generation ──
+function formatTime24(timeStr) {
+  const mins = parseMinutes(timeStr);
+  if (mins === null) return timeStr || "";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+
+function truncateAddr(addr) {
+  return addr.replace(/\d*[巷弄號樓].*/g, '').trim();
+}
+
+function generateSimpleParts(data) {
+  const time    = formatTime24(data["預約時間"] || "");
+  const service = data["服務項目"] || "";
+  const rawAddr = data["接送地址"] || data["接送順序"] || data["連繫地址"] || data["出發地址"] || "";
+  const address = truncateAddr(rawAddr);
+  const flight  = data["航班編號"] || "";
+  const carType = data["接送車型"] || "";
+  const payment = data["付費方式"] || "";
+  const notes   = data["備註"] || "";
+  const rawExtra = data["加點地址"] || "";
+  const extraAddr = truncateAddr(rawExtra);
+
+  let mainPart = "";
+  if (service.includes("接機")) {
+    mainPart = (flight || "") + "接機" + address;
+  } else if (service.includes("送機")) {
+    mainPart = address.includes("➡️") ? "送機" + address : address + "送機";
+  } else if (service.includes("單程")) {
+    mainPart = "單程" + address;
+  } else {
+    mainPart = service + address;
+  }
+
+  const line1 = (time ? time + " " : "") + mainPart;
+  const line2 = [payment, carType].filter(Boolean).join("  ");
+  const line3Parts = [];
+  if (notes && (notes.includes("安全椅") || notes.includes("座椅") || notes.includes("加點"))) line3Parts.push(notes);
+  if (extraAddr) line3Parts.push("加點：" + extraAddr);
+  const line3 = line3Parts.join("  ");
+  return { line1, line2, line3 };
+}
+
+function initSimpleLines() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    const data = getOrderData(card);
+    const { line1, line2, line3 } = generateSimpleParts(data);
+    card.querySelector(".card-simple").innerHTML =
+      `<div class="simple-l1">${line1}</div>` +
+      `<div class="simple-l2">${line2}</div>` +
+      (line3 ? `<div class="simple-l3">${line3}</div>` : "");
+  });
+}
+
+// ── Bulk copy / share ──
+function buildBulkText(format) {
+  const cards = [...document.querySelectorAll(".order-card .card-checkbox:checked")]
+    .map(cb => cb.closest(".order-card"));
+  const lines = [];
+  cards.forEach((card, i) => {
+    const data = getOrderData(card);
+    const driver = card.querySelector(".driver-name").textContent.trim();
+    if (format === "simple") {
+      const { line1, line2, line3 } = generateSimpleParts(data);
+      lines.push(`【${i+1}】${line1}`);
+      lines.push(line2);
+      if (line3) lines.push(line3);
+      if (driver) lines.push("司機：" + driver);
+    } else {
+      lines.push(`【${i+1}】`);
+      FIELDS_ORDER.forEach(f => { if (data[f]) lines.push(f + "：" + data[f]); });
+      if (driver) lines.push("司機：" + driver);
+    }
+    if (i < cards.length - 1) lines.push("─".repeat(18));
+  });
+  return lines.join("\n");
+}
+
+function copySelected(format) {
+  const text = buildBulkText(format);
+  if (!text) return;
+  const btnId = format === "simple" ? "copySimpleBtn" : "copyDetailBtn";
+  const btn = document.getElementById(btnId);
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = "已複製✓";
+    setTimeout(() => { btn.textContent = orig; }, 1800);
+  });
+}
+
+function shareSelected(format) {
+  const text = buildBulkText(format);
+  if (!text) return;
+  const n = document.querySelectorAll(".order-card .card-checkbox:checked").length;
+  const btnId = format === "simple" ? "shareSimpleBtn" : "shareDetailBtn";
+  const btn = document.getElementById(btnId);
+  if (navigator.share) {
+    navigator.share({ title: `${n} 筆訂單`, text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = "已複製✓";
+      setTimeout(() => { btn.textContent = orig; }, 1800);
+    });
+  }
+}
+
+// ── Card copy / share ──
+function getCardText(card) {
+  const data = getOrderData(card);
+  const driver = card.querySelector(".driver-name").textContent.trim();
+  if (currentView === "simple") {
+    const { line1, line2, line3 } = generateSimpleParts(data);
+    let text = line1 + "\n" + line2;
+    if (line3) text += "\n" + line3;
+    if (driver) text += "\n司機：" + driver;
+    return text;
+  }
+  const lines = [];
+  FIELDS_ORDER.forEach(f => { if (data[f]) lines.push(f + "：" + data[f]); });
+  if (driver) lines.push("司機：" + driver);
+  return lines.join("\n");
+}
+
+function copyCard(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  navigator.clipboard.writeText(getCardText(card)).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = "已複製";
+    btn.classList.add("done");
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove("done"); }, 1800);
+  });
+}
+
+function shareCard(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  const data = getOrderData(card);
+  const text = getCardText(card);
+  const title = data["訂單號碼"] || "訂單";
+  if (navigator.share) {
+    navigator.share({ title, text }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(text).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = "已複製";
+      btn.classList.add("done");
+      setTimeout(() => { btn.textContent = orig; btn.classList.remove("done"); }, 1800);
+    });
+  }
+}
+
+function switchView(view, btn) {
+  currentView = view;
+  document.querySelectorAll(".btn-view").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".order-card").forEach(card => {
+    if (view === "simple") {
+      card.querySelector(".card-body").classList.add("hidden");
+      card.querySelector(".card-simple").classList.remove("hidden");
+    } else {
+      card.querySelector(".card-body").classList.remove("hidden");
+      card.querySelector(".card-simple").classList.remove("hidden");
+    }
+  });
+}
+
+const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","接送地址","接送順序","連繫地址","加點地址","付費方式","備註"];
+
+// ── Combined filter apply ──
+function applyFilters() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    let tabMatch;
+    if (currentTab === "all") {
+      tabMatch = true;
+    } else if (currentTab === "custom") {
+      const n = dateToNum(card.dataset.date);
+      const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
+      tabMatch = n !== null && (!f || n >= f) && (!t || n <= t);
+    } else {
+      tabMatch = card.dataset.tab === currentTab;
+    }
+    const driverMatch = currentDriverFilter === "all" ||
+      (currentDriverFilter === "assigned" && card.dataset.hasDriver === "yes") ||
+      (currentDriverFilter === "unassigned" && card.dataset.hasDriver === "no");
+    card.classList.toggle("hidden", !(tabMatch && driverMatch));
+  });
+  updateSelCount();
+}
+
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll(".date-tab-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  const panel = document.getElementById("dateRangePanel");
+  if (tab === "custom") {
+    panel.classList.remove("hidden");
+    renderCalendar();
+  } else {
+    panel.classList.add("hidden");
+    calRangeStart = null; calRangeEnd = null;
+    dateRangeFrom = null; dateRangeTo = null;
+  }
+  applyFilters();
+}
+
+function switchDriverFilter(filter, btn) {
+  currentDriverFilter = filter;
+  document.querySelectorAll(".driver-filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  applyFilters();
+}
+
+function updateCounts() {
+  const all = document.querySelectorAll(".order-card");
+  document.getElementById("cnt-all").textContent = `(${all.length})`;
+  document.querySelectorAll(".date-tab-btn[data-tab]").forEach(btn => {
+    const tab = btn.dataset.tab;
+    if (tab === "all") return;
+    const n = document.querySelectorAll(`.order-card[data-tab="${tab}"]`).length;
+    const sp = btn.querySelector(".tab-count");
+    if (sp) sp.textContent = n ? `(${n})` : "";
+  });
+  const assignedCount = document.querySelectorAll('.order-card[data-has-driver="yes"]').length;
+  const unassignedCount = document.querySelectorAll('.order-card[data-has-driver="no"]').length;
+  const cntAssigned = document.getElementById("cnt-assigned");
+  const cntUnassigned = document.getElementById("cnt-unassigned");
+  if (cntAssigned) cntAssigned.textContent = assignedCount ? `(${assignedCount})` : "";
+  if (cntUnassigned) cntUnassigned.textContent = unassignedCount ? `(${unassignedCount})` : "";
+}
+
+function toggleCard(card, event) {
+  if (event.target.type === "checkbox") return;
+  const cb = card.querySelector(".card-checkbox");
+  cb.checked = !cb.checked;
+  card.classList.toggle("selected", cb.checked);
+  onCheckChange();
+}
+
+function onCheckChange() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    card.classList.toggle("selected", cb.checked);
+  });
+  updateSelCount();
+  updateConflicts();
+}
+
+function updateSelCount() {
+  const n = document.querySelectorAll(".order-card .card-checkbox:checked").length;
+  document.getElementById("selCount").textContent = n;
+  const off = n === 0;
+  ["shareBtn","copySimpleBtn","copyDetailBtn","shareSimpleBtn","shareDetailBtn"]
+    .forEach(id => { document.getElementById(id).disabled = off; });
+}
+
+function toggleSelectAll() {
+  const visibleCards = [...document.querySelectorAll(".order-card:not(.hidden)")];
+  const allChecked = visibleCards.every(c => c.querySelector(".card-checkbox").checked);
+  visibleCards.forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    cb.checked = !allChecked;
+    card.classList.toggle("selected", cb.checked);
+  });
+  updateSelCount();
+  updateConflicts();
+}
+
+function clearSelection() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    card.querySelector(".card-checkbox").checked = false;
+    card.classList.remove("selected");
+  });
+  updateSelCount();
+  updateConflicts();
+}
+
+function getSelectedOrders() {
+  return [...document.querySelectorAll(".order-card .card-checkbox:checked")]
+    .map(cb => {
+      const card = cb.closest(".order-card");
+      const data = JSON.parse(card.querySelector(".order-data").textContent);
+      data._driver = card.querySelector(".driver-name").textContent.trim();
+      return data;
+    });
+}
+
+function regenerateText() {
+  const modalDriver = document.getElementById("driverName").value.trim();
+  const orders = getSelectedOrders();
+  const lines = [];
+  if (modalDriver) lines.push(`司機：${modalDriver}`);
+  lines.push(`共 ${orders.length} 筆訂單`);
+  lines.push("─".repeat(20));
+  orders.forEach((o, i) => {
+    const driver = o._driver || modalDriver;
+    lines.push(`【${i+1}】${o["預約日期"] || ""} ${o["預約時間"] || ""}　${o["服務項目"] || ""}`);
+    if (driver) lines.push(`司機：${driver}`);
+    FIELDS_ORDER.forEach(f => {
+      if (["預約日期","預約時間","服務項目"].includes(f)) return;
+      if (o[f]) lines.push(`${f}：${o[f]}`);
+    });
+    if (i < orders.length - 1) lines.push("─".repeat(20));
+  });
+  document.getElementById("shareText").value = lines.join("\n");
+}
+
+function openShareModal() {
+  regenerateText();
+  document.getElementById("shareModal").classList.add("open");
+  const copyBtn = document.getElementById("copyBtn");
+  copyBtn.textContent = "複製文字";
+  copyBtn.classList.remove("copied");
+}
+
+function closeShareModal() { document.getElementById("shareModal").classList.remove("open"); }
+function closeModalOnOverlay(e) { if (e.target === document.getElementById("shareModal")) closeShareModal(); }
+
+function copyText() {
+  const text = document.getElementById("shareText").value;
+  const modalDriver = document.getElementById("driverName").value.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById("copyBtn");
+    btn.textContent = "已複製！";
+    btn.classList.add("copied");
+    setTimeout(() => { btn.textContent = "複製文字"; btn.classList.remove("copied"); }, 2000);
+    if (modalDriver) {
+      document.querySelectorAll(".order-card .card-checkbox:checked").forEach(cb => {
+        const card = cb.closest(".order-card");
+        apiSetDriver(card.dataset.id, modalDriver);
+        setCardDriver(card, modalDriver);
+      });
+    }
+  });
+}
+
+function parseMinutes(timeStr) {
+  if (!timeStr) return null;
+  let s = timeStr.replace("：", ":").trim();
+  const pm = s.includes("下午");
+  const am = s.includes("上午");
+  s = s.replace("上午", "").replace("下午", "").trim();
+  const m = s.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  let h = parseInt(m[1]), min = parseInt(m[2]);
+  if (pm && h < 12) h += 12;
+  if (am && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+function getOrderData(card) {
+  try { return JSON.parse(card.querySelector(".order-data").textContent); } catch { return {}; }
+}
+
+function updateConflicts() {
+  const windows = [];
+  document.querySelectorAll(".order-card .card-checkbox:checked").forEach(cb => {
+    const card = cb.closest(".order-card");
+    const data = getOrderData(card);
+    const service = data["服務項目"] || "";
+    const t = parseMinutes(data["預約時間"]);
+    const date = data["預約日期"] || "";
+    if (t === null) return;
+    if (service.includes("接機")) windows.push({ date, start: t - 30, end: t + 60 });
+    else if (service.includes("送機")) windows.push({ date, start: t - 30, end: t + 30 });
+  });
+  document.querySelectorAll(".order-card").forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    if (cb.checked) { card.classList.remove("conflict"); return; }
+    const data = getOrderData(card);
+    const t = parseMinutes(data["預約時間"]);
+    const date = data["預約日期"] || "";
+    const inConflict = t !== null && windows.some(w => w.date === date && t > w.start && t < w.end);
+    card.classList.toggle("conflict", inConflict);
+  });
+}
+
+function apiSetDriver(orderId, name) {
+  return fetch("/api/drivers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order_id: orderId, name: name })
+  });
+}
+
+function setCardDriver(card, name) {
+  const driverDiv = card.querySelector(".card-driver");
+  const assignBtn = card.querySelector(".btn-assign-driver");
+  if (name) {
+    driverDiv.querySelector(".driver-name").textContent = name;
+    driverDiv.classList.remove("hidden");
+    assignBtn.style.display = "none";
+    card.classList.add("has-driver");
+    card.dataset.hasDriver = "yes";
+  } else {
+    driverDiv.classList.add("hidden");
+    assignBtn.style.display = "";
+    card.classList.remove("has-driver");
+    card.dataset.hasDriver = "no";
+  }
+  updateCounts();
+  applyFilters();
+}
+
+function assignDriver(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  const name = prompt("請輸入司機姓名：");
+  if (name && name.trim()) {
+    apiSetDriver(card.dataset.id, name.trim());
+    setCardDriver(card, name.trim());
+  }
+}
+
+function editDriver(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  const current = card.querySelector(".driver-name").textContent;
+  const name = prompt("修改司機姓名：", current);
+  if (name && name.trim()) {
+    apiSetDriver(card.dataset.id, name.trim());
+    setCardDriver(card, name.trim());
+  }
+}
+
+function removeDriver(btn, event) {
+  event.stopPropagation();
+  if (!confirm("確定要移除指定司機？")) return;
+  const card = btn.closest(".order-card");
+  apiSetDriver(card.dataset.id, "");
+  setCardDriver(card, null);
+}
+
+function initServiceTypes() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    const service = (getOrderData(card)["服務項目"] || "");
+    if (service.includes("接機")) card.classList.add("is-pickup");
+  });
+}
+
+// Init
+updateCounts();
+updateSelCount();
+initServiceTypes();
+initSimpleLines();
+document.querySelectorAll(".order-card").forEach(card => {
+  if (card.querySelector(".driver-name").textContent.trim()) card.classList.add("has-driver");
+});
+</script>
+</body>
+</html>
