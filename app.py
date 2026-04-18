@@ -11,8 +11,25 @@ DB = os.environ.get("DB_PATH", "orders.db")
 FIELDS = [
     "訂單號碼", "預約日期", "預約時間", "服務項目", "航班編號",
     "接送車型", "預約方式", "乘客姓名", "用車人數", "行李件數",
-    "聯絡電話", "接送地址", "接送順序", "連繫地址", "付費方式", "備註"
+    "聯絡電話", "接送地址", "接送順序", "連繫地址", "加點地址", "付費方式", "備註"
 ]
+
+FIELD_ALIASES = {
+    "用車日期": "預約日期",
+    "用車時間": "預約時間",
+    "聯絡地址": "接送地址",
+    "出發地址": "接送地址",
+}
+
+# B-format orders use space-separated key value (no colon)
+B_FORMAT_FIELDS = [
+    "用車日期", "用車時間", "服務項目", "航班編號", "接送車型",
+    "乘客姓名", "用車人數", "行李件數", "聯絡電話", "聯絡地址",
+    "付費方式", "出發地址", "加點地址", "備註",
+]
+
+# All field names recognized by K-format parser (canonical + aliases)
+_ALL_K_FIELDS = FIELDS + [f for f in FIELD_ALIASES if f not in FIELDS]
 
 def get_db():
     conn = sqlite3.connect(DB)
@@ -38,26 +55,56 @@ init_db()
 
 def parse_order(text):
     order = {}
-    pattern = "(" + "|".join(re.escape(f) for f in FIELDS) + ")："
+    pattern = "(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")："
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
         key = parts[i]
+        canonical = FIELD_ALIASES.get(key, key)
         value = parts[i + 1].strip().replace("訂單訊息", "").strip()
-        order[key] = value
+        order[canonical] = value
     return order if order else None
+
+def parse_b_order(order_id, text):
+    order = {"訂單號碼": order_id}
+    if not text.strip():
+        return order
+    pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ") "
+    parts = re.split(pattern, text)
+    for i in range(1, len(parts) - 1, 2):
+        key = parts[i]
+        canonical = FIELD_ALIASES.get(key, key)
+        value = parts[i + 1].strip()
+        if value:
+            order[canonical] = value
+    return order if len(order) > 1 else None
 
 def parse_orders(raw_text):
     raw_text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
     lines = [line.strip() for line in raw_text.strip().splitlines()
              if line.strip() and line.strip() != "訂單訊息"]
-    combined = "".join(lines)
-    chunks = re.split(r'(?=訂單號碼：)', combined)
+
+    blocks = []  # each entry: [fmt, lines_list]
+    for line in lines:
+        if "訂單號碼：" in line:
+            blocks.append(["K", [line]])
+        elif re.match(r'^[BbKk]\d{10,}(\s|$)', line) and "訂單號碼：" not in line:
+            blocks.append(["B", [line]])
+        elif blocks:
+            blocks[-1][1].append(line)
+
     orders = []
-    for chunk in chunks:
-        if chunk.strip():
-            order = parse_order(chunk)
+    for fmt, block_lines in blocks:
+        if fmt == "K":
+            order = parse_order("".join(block_lines))
             if order:
                 orders.append(order)
+        else:
+            text = " ".join(block_lines)
+            m = re.match(r'^([BbKk]\d{10,})\s*(.*)', text, re.DOTALL)
+            if m:
+                order = parse_b_order(m.group(1), m.group(2).strip())
+                if order:
+                    orders.append(order)
     return orders
 
 def order_sort_key(order):

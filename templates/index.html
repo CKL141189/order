@@ -577,14 +577,13 @@ function formatTime24(timeStr) {
 function generateSimpleParts(data) {
   const time    = formatTime24(data["預約時間"] || "");
   const service = data["服務項目"] || "";
-  const address = data["接送地址"] || data["接送順序"] || data["連繫地址"] || "";
+  const address = data["接送地址"] || data["接送順序"] || data["連繫地址"] || data["出發地址"] || "";
   const flight  = data["航班編號"] || "";
   const carType = data["接送車型"] || "";
   const payment = data["付費方式"] || "";
   const notes   = data["備註"] || "";
 
-  const priceMatch = payment.match(/(\d+)/);
-  const price = priceMatch ? "$" + priceMatch[1] : "";
+  const extraAddr = data["加點地址"] || "";
 
   let mainPart = "";
   if (service.includes("接機")) {
@@ -598,8 +597,11 @@ function generateSimpleParts(data) {
   }
 
   const line1 = (time ? time + " " : "") + mainPart;
-  const line2 = [price, carType].filter(Boolean).join("  ");
-  const line3 = (notes && (notes.includes("安全椅") || notes.includes("座椅") || notes.includes("加點"))) ? notes : "";
+  const line2 = [payment, carType].filter(Boolean).join("  ");
+  const line3Parts = [];
+  if (notes && (notes.includes("安全椅") || notes.includes("座椅") || notes.includes("加點"))) line3Parts.push(notes);
+  if (extraAddr) line3Parts.push("加點：" + extraAddr);
+  const line3 = line3Parts.join("  ");
   return { line1, line2, line3 };
 }
 
@@ -728,7 +730,7 @@ function switchView(view, btn) {
   });
 }
 
-const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","接送地址","接送順序","連繫地址","付費方式","備註"];
+const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","接送地址","接送順序","連繫地址","加點地址","付費方式","備註"];
 
 function setAction(a) { document.getElementById("formAction").value = a; }
 
