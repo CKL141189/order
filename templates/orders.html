@@ -273,9 +273,13 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     </div>
   </div>
 
-  <!-- View Toggle -->
+  <!-- Sort + View Toggle -->
   <div class="view-toggle-bar">
-    <span>訂單顯示：</span>
+    <span>排序：</span>
+    <button class="btn-view btn-sort-opt active" onclick="switchSort('date', this)">依預約日期</button>
+    <button class="btn-view btn-sort-opt" onclick="switchSort('created', this)">依建立時間</button>
+    <div style="width:1px;background:#ddd;height:20px;margin:0 6px;flex-shrink:0;"></div>
+    <span>顯示：</span>
     <button class="btn-view active" data-view="detailed" onclick="switchView('detailed', this)">詳細訂單</button>
     <button class="btn-view" data-view="simple" onclick="switchView('simple', this)">簡易訂單</button>
   </div>
@@ -319,7 +323,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   <div class="order-grid" id="orderGrid">
     {% for order in orders %}
     {% set service = order.get("服務項目", "") %}
-    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" onclick="toggleCard(this, event)">
+    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
       <div class="card-header">
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
@@ -1070,6 +1074,34 @@ function initServiceTypes() {
     const service = (getOrderData(card)["服務項目"] || "");
     if (service.includes("接機")) card.classList.add("is-pickup");
   });
+}
+
+// ── Sort ──
+let currentSort = "date";
+
+function applySort() {
+  const grid = document.getElementById("orderGrid");
+  const cards = [...grid.querySelectorAll(".order-card")];
+  if (currentSort === "created") {
+    cards.sort((a, b) => {
+      const ta = a.dataset.created || "";
+      const tb = b.dataset.created || "";
+      if (!ta && !tb) return 0;
+      if (!ta) return 1;
+      if (!tb) return -1;
+      return tb.localeCompare(ta);
+    });
+  } else {
+    cards.sort((a, b) => parseInt(a.dataset.origIdx) - parseInt(b.dataset.origIdx));
+  }
+  cards.forEach(c => grid.appendChild(c));
+}
+
+function switchSort(sort, btn) {
+  currentSort = sort;
+  document.querySelectorAll(".btn-sort-opt").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  applySort();
 }
 
 // Init
