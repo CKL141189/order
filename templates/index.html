@@ -11,46 +11,22 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 
 .nav-bar { display: flex; align-items: center; margin-bottom: 28px; }
 .nav-bar h1 { font-size: 1.6rem; color: #2c3e50; flex: 1; text-align: center; }
-.nav-links { display: flex; gap: 8px; }
 .btn-nav { padding: 8px 18px; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-family: inherit; text-decoration: none; display: inline-block; transition: background 0.2s; }
 .btn-nav.blue { background: #4a90e2; }
 .btn-nav.blue:hover { background: #357abd; }
 .btn-nav.green { background: #27ae60; }
 .btn-nav.green:hover { background: #1e8449; }
 
-.input-section { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+.input-section { background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
 .input-section label { font-weight: bold; display: block; margin-bottom: 10px; color: #555; font-size: 1rem; }
-textarea { width: 100%; height: 150px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; font-family: inherit; }
+textarea { width: 100%; height: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; font-family: inherit; }
 textarea:focus { outline: none; border-color: #4a90e2; }
-.btn-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
-button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: background 0.2s; }
-.btn-sort { background: #4a90e2; color: #fff; }
-.btn-sort:hover { background: #357abd; }
-.btn-manual { background: #f0f0f0; color: #555; }
-.btn-manual:hover { background: #e0e0e0; }
-
-.review-section { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
-.review-section.hidden { display: none; }
-.review-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #e8f0fa; padding-bottom: 10px; }
-.review-section-title { font-weight: bold; font-size: 1.05rem; color: #2c3e50; }
-.review-order-card { border: 1px solid #d8e8f5; border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
-.review-order-card-header { background: #4a90e2; color: #fff; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; font-size: 0.92rem; font-weight: bold; }
-.review-order-fields { padding: 14px 14px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
-@media (max-width: 600px) { .review-order-fields { grid-template-columns: 1fr; } }
-.review-field-row { display: flex; flex-direction: column; gap: 3px; }
-.review-field-row.full-width { grid-column: 1 / -1; }
-.review-field-label { font-size: 0.76rem; color: #888; font-weight: bold; letter-spacing: 0.02em; }
-.review-field-input { padding: 7px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 0.9rem; font-family: inherit; background: #fafafa; }
-.review-field-input:focus { outline: none; border-color: #4a90e2; background: #fff; }
-.btn-delete-review { background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.45); color: #fff; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; }
-.btn-delete-review:hover { background: rgba(255,255,255,0.35); }
-.btn-confirm-orders { background: #27ae60; color: #fff; padding: 10px 32px; font-size: 1rem; border-radius: 6px; }
-.btn-confirm-orders:hover:not(:disabled) { background: #1e8449; }
-.btn-confirm-orders:disabled { background: #a8d5b5; cursor: not-allowed; }
-.btn-cancel-review { background: #e0e0e0; color: #555; }
-.btn-cancel-review:hover { background: #c8c8c8; }
-.btn-add-empty { background: #f0f7ff; color: #4a90e2; border: 2px dashed #b0d0f0; padding: 8px 22px; border-radius: 6px; cursor: pointer; font-size: 0.88rem; font-family: inherit; width: 100%; }
-.btn-add-empty:hover { background: #d8ecff; }
+.btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+button { padding: 10px 28px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: background 0.2s; }
+.btn-add { background: #27ae60; color: #fff; }
+.btn-add:hover:not(:disabled) { background: #1e8449; }
+.btn-add:disabled { background: #a8d5b5; cursor: not-allowed; }
+.msg { margin-top: 12px; font-size: 0.88rem; color: #888; }
 </style>
 </head>
 <body>
@@ -59,7 +35,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   <div class="nav-bar">
     <div style="flex:1"></div>
     <h1>新增訂單</h1>
-    <div class="nav-links" style="flex:1; justify-content:flex-end;">
+    <div style="flex:1; display:flex; justify-content:flex-end; gap:8px;">
       <a href="/orders" class="btn-nav blue">訂單列表 →</a>
       <a href="/stats" class="btn-nav green">統計</a>
     </div>
@@ -67,115 +43,47 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 
   <div class="input-section">
     <label>貼上訂單資訊（可一次貼入多筆）</label>
-    <textarea id="pasteArea" placeholder="貼上訂單文字，系統會自動解析各欄位，您可在確認表單中修改後再新增"></textarea>
+    <textarea id="pasteArea" placeholder="貼上訂單文字，系統將自動解析並直接新增至訂單列表"></textarea>
     <div class="btn-row">
-      <button type="button" class="btn-sort" onclick="parsePreview()">解析預覽</button>
-      <button type="button" class="btn-manual" onclick="addEmptyOrderDirect()">手動填寫空白訂單</button>
+      <button type="button" class="btn-add" id="addBtn" onclick="addOrders()">新增訂單</button>
     </div>
-  </div>
-
-  <div class="review-section hidden" id="reviewSection">
-    <div class="review-section-header">
-      <span class="review-section-title">確認訂單資訊</span>
-      <span id="reviewCount" style="font-size:0.85rem; color:#888;"></span>
-    </div>
-    <div id="reviewOrdersList"></div>
-    <div style="margin-bottom:16px;">
-      <button type="button" class="btn-add-empty" onclick="addEmptyOrder()">＋ 新增一筆空白訂單</button>
-    </div>
-    <div class="btn-row" style="justify-content:center; gap:16px;">
-      <button type="button" class="btn-confirm-orders" onclick="confirmOrders()">確認新增</button>
-      <button type="button" class="btn-cancel-review" onclick="cancelPreview()">取消</button>
-    </div>
+    <div class="msg" id="msg"></div>
   </div>
 
 </div>
 <script>
-const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","接送地址","接送順序","連繫地址","加點地址","付費方式","備註"];
-const FULL_WIDTH_FIELDS = new Set(['接送地址','接送順序','連繫地址','加點地址','備註']);
-
-function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function buildReviewCard(order, idx) {
-  const orderId = order['訂單號碼'] || ('訂單 ' + (idx + 1));
-  const fieldsHtml = FIELDS_ORDER.map(f => `
-    <div class="review-field-row${FULL_WIDTH_FIELDS.has(f) ? ' full-width' : ''}">
-      <label class="review-field-label">${f}</label>
-      <input type="text" class="review-field-input" data-field="${f}" value="${escHtml(order[f])}">
-    </div>`).join('');
-  return `<div class="review-order-card">
-    <div class="review-order-card-header">
-      <span>${escHtml(orderId)}</span>
-      <button class="btn-delete-review" onclick="this.closest('.review-order-card').remove(); updateReviewCount()">移除</button>
-    </div>
-    <div class="review-order-fields">${fieldsHtml}</div>
-  </div>`;
-}
-
-function renderReviewOrders(orders) {
-  document.getElementById('reviewOrdersList').innerHTML = orders.map((o,i) => buildReviewCard(o,i)).join('');
-  updateReviewCount();
-}
-
-function updateReviewCount() {
-  const n = document.querySelectorAll('#reviewOrdersList .review-order-card').length;
-  document.getElementById('reviewCount').textContent = '共 ' + n + ' 筆';
-}
-
-function addEmptyOrder() {
-  const list = document.getElementById('reviewOrdersList');
-  const idx = list.querySelectorAll('.review-order-card').length;
-  list.insertAdjacentHTML('beforeend', buildReviewCard({}, idx));
-  updateReviewCount();
-}
-
-function addEmptyOrderDirect() {
-  renderReviewOrders([{}]);
-  document.getElementById('reviewSection').classList.remove('hidden');
-  document.getElementById('reviewSection').scrollIntoView({behavior:'smooth'});
-}
-
-async function parsePreview() {
+async function addOrders() {
   const text = document.getElementById('pasteArea').value.trim();
-  if (!text) { addEmptyOrderDirect(); return; }
-  const resp = await fetch('/api/parse', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({text})
-  });
-  const data = await resp.json();
-  const orders = (data.orders && data.orders.length) ? data.orders : [{}];
-  renderReviewOrders(orders);
-  document.getElementById('reviewSection').classList.remove('hidden');
-  document.getElementById('reviewSection').scrollIntoView({behavior:'smooth'});
-}
+  if (!text) { window.location.href = '/orders'; return; }
+  const btn = document.getElementById('addBtn');
+  const msg = document.getElementById('msg');
+  btn.disabled = true; btn.textContent = '解析中…';
+  msg.textContent = '';
 
-function cancelPreview() {
-  document.getElementById('reviewSection').classList.add('hidden');
-  document.getElementById('pasteArea').value = '';
-}
+  const parseResp = await fetch('/api/parse', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  });
+  const parseData = await parseResp.json();
+  const orders = parseData.orders || [];
 
-async function confirmOrders() {
-  const cards = document.querySelectorAll('#reviewOrdersList .review-order-card');
-  const orders = [];
-  cards.forEach(card => {
-    const o = {};
-    card.querySelectorAll('.review-field-input').forEach(inp => {
-      if (inp.value.trim()) o[inp.dataset.field] = inp.value.trim();
-    });
-    if (Object.keys(o).length) orders.push(o);
+  if (!orders.length) {
+    btn.disabled = false; btn.textContent = '新增訂單';
+    msg.textContent = '未能解析出任何訂單，請確認格式後重試。';
+    return;
+  }
+
+  const saveResp = await fetch('/api/add_orders', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orders })
   });
-  if (!orders.length) return;
-  const btn = document.querySelector('.btn-confirm-orders');
-  btn.disabled = true; btn.textContent = '儲存中…';
-  const resp = await fetch('/api/add_orders', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({orders})
-  });
-  const data = await resp.json();
-  if (data.ok) { window.location.href = '/orders'; }
-  else { btn.disabled = false; btn.textContent = '確認新增'; alert('儲存失敗，請重試'); }
+  const saveData = await saveResp.json();
+  if (saveData.ok) {
+    window.location.href = '/orders';
+  } else {
+    btn.disabled = false; btn.textContent = '新增訂單';
+    msg.textContent = '儲存失敗，請重試。';
+  }
 }
 </script>
 </body>
