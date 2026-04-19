@@ -21,6 +21,7 @@ FIELD_ALIASES = {
     "用車時間": "預約時間",
     "聯絡地址": "連繫地址",
     "出發地址": "接送地址",
+    "接送地點": "接送順序",
 }
 
 # B-format orders use space-separated key value (no colon)
