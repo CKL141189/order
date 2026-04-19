@@ -243,6 +243,14 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 }
 .note-badge.hidden { display: none; }
 
+/* Peek detail button in simple view */
+.btn-peek-detail {
+  display: block; width: 100%; background: none; border: none; border-top: 1px solid #eef2f7;
+  color: #4a90e2; font-size: 0.8rem; font-family: inherit; cursor: pointer;
+  padding: 5px 0; margin-top: 6px; text-align: center; transition: background 0.15s;
+}
+.btn-peek-detail:hover { background: #f0f7ff; }
+
 @media (max-width: 640px) {
   .container { margin: 10px auto; padding: 0 10px 60px; }
 
@@ -608,7 +616,8 @@ function updateCardDOM(card, data) {
   card.querySelector(".card-simple").innerHTML =
     `<div class="simple-l1">${line1}</div>` +
     `<div class="simple-l2">${line2}</div>` +
-    (line3 ? `<div class="simple-l3">${line3}</div>` : "");
+    (line3 ? `<div class="simple-l3">${line3}</div>` : "") +
+    `<button class="btn-peek-detail" onclick="peekDetail(this,event)">查看詳細 ↓</button>`;
   const service = merged["服務項目"] || "";
   card.classList.toggle("is-pickup", service.includes("接機"));
   updateCounts();
@@ -694,7 +703,8 @@ function initSimpleLines() {
     card.querySelector(".card-simple").innerHTML =
       `<div class="simple-l1">${line1}</div>` +
       `<div class="simple-l2">${line2}</div>` +
-      (line3 ? `<div class="simple-l3">${line3}</div>` : "");
+      (line3 ? `<div class="simple-l3">${line3}</div>` : "") +
+      `<button class="btn-peek-detail" onclick="peekDetail(this,event)">查看詳細 ↓</button>`;
   });
 }
 
@@ -812,6 +822,9 @@ function switchView(view, btn) {
       simple.classList.remove("hidden");
       if (created) created.style.display = "none";
       if (note) note.classList.add("hidden");
+      // reset any open peek
+      const peek = simple.querySelector(".btn-peek-detail");
+      if (peek) peek.textContent = "查看詳細 ↓";
     } else {
       body.classList.remove("hidden");
       simple.classList.add("hidden");
@@ -819,6 +832,26 @@ function switchView(view, btn) {
       if (note) note.classList.remove("hidden");
     }
   });
+}
+
+function peekDetail(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  const body    = card.querySelector(".card-body");
+  const note    = card.querySelector(".card-note");
+  const created = card.querySelector(".card-created");
+  const isOpen  = !body.classList.contains("hidden");
+  if (isOpen) {
+    body.classList.add("hidden");
+    if (note) note.classList.add("hidden");
+    if (created) created.style.display = "none";
+    btn.textContent = "查看詳細 ↓";
+  } else {
+    body.classList.remove("hidden");
+    if (note) note.classList.remove("hidden");
+    if (created) created.style.display = "";
+    btn.textContent = "收起 ↑";
+  }
 }
 
 function saveNote(textarea) {
