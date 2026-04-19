@@ -892,6 +892,7 @@ function applyFilters() {
     card.classList.toggle("hidden", !(tabMatch && driverMatch && searchMatch));
   });
   updateSelCount();
+  updateCounts();
 }
 
 function clearSearch() {
@@ -932,8 +933,17 @@ function updateCounts() {
     const sp = btn.querySelector(".tab-count");
     if (sp) sp.textContent = n ? `(${n})` : "";
   });
-  const assignedCount = document.querySelectorAll('.order-card[data-has-driver="yes"]').length;
-  const unassignedCount = document.querySelectorAll('.order-card[data-has-driver="no"]').length;
+  const tabCards = Array.from(all).filter(card => {
+    if (currentTab === "all") return true;
+    if (currentTab === "custom") {
+      const n = dateToNum(card.dataset.date);
+      const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
+      return n !== null && (!f || n >= f) && (!t || n <= t);
+    }
+    return card.dataset.tab === currentTab;
+  });
+  const assignedCount = tabCards.filter(c => c.dataset.hasDriver === "yes").length;
+  const unassignedCount = tabCards.filter(c => c.dataset.hasDriver === "no").length;
   const cntAssigned = document.getElementById("cnt-assigned");
   const cntUnassigned = document.getElementById("cnt-unassigned");
   if (cntAssigned) cntAssigned.textContent = assignedCount ? `(${assignedCount})` : "";
