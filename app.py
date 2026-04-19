@@ -1,12 +1,14 @@
 from flask import Flask, render_template, request, jsonify, redirect
 import re
-import sqlite3
+import psycopg2
+import psycopg2.extras
+from contextlib import contextmanager
 import json
 import os
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
-DB = os.environ.get("DB_PATH", "orders.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 FIELDS = [
     "訂單號碼", "預約日期", "預約時間", "服務項目", "航班編號",
@@ -31,25 +33,33 @@ B_FORMAT_FIELDS = [
 # All field names recognized by K-format parser (canonical + aliases)
 _ALL_K_FIELDS = FIELDS + [f for f in FIELD_ALIASES if f not in FIELDS]
 
+@contextmanager
 def get_db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    return conn
+    conn = psycopg2.connect(DATABASE_URL)
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 def init_db():
     with get_db() as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS orders (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                data TEXT NOT NULL
-            )
-        """)
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS drivers (
-                order_id TEXT PRIMARY KEY,
-                name TEXT NOT NULL
-            )
-        """)
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS orders (
+                    id SERIAL PRIMARY KEY,
+                    data TEXT NOT NULL
+                )
+            """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS drivers (
+                    order_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL
+                )
+            """)
 
 init_db()
 
@@ -149,7 +159,9 @@ def get_date_tabs():
 
 def load_orders():
     with get_db() as conn:
-        rows = conn.execute("SELECT id, data FROM orders ORDER BY id").fetchall()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, data FROM orders ORDER BY id")
+            rows = cur.fetchall()
     orders = []
     for row in rows:
         o = json.loads(row["data"])
@@ -159,10 +171,11 @@ def load_orders():
 
 def save_orders(orders):
     with get_db() as conn:
-        conn.execute("DELETE FROM orders")
-        for o in orders:
-            clean = {k: v for k, v in o.items() if not k.startswith("_")}
-            conn.execute("INSERT INTO orders (data) VALUES (?)", (json.dumps(clean, ensure_ascii=False),))
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM orders")
+            for o in orders:
+                clean = {k: v for k, v in o.items() if not k.startswith("_")}
+                cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
 
 @app.route("/", methods=["GET"])
 def index():
@@ -177,7 +190,9 @@ def orders_page():
         order["_tab"] = order.get("預約日期", "") if order.get("預約日期", "") in tab_keys else "其他"
     has_other = any(o["_tab"] == "其他" for o in orders)
     with get_db() as conn:
-        driver_rows = conn.execute("SELECT order_id, name FROM drivers").fetchall()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT order_id, name FROM drivers")
+            driver_rows = cur.fetchall()
     drivers = {row["order_id"]: row["name"] for row in driver_rows}
     return render_template(
         "orders.html",
@@ -191,8 +206,9 @@ def orders_page():
 @app.route("/clear", methods=["POST"])
 def clear_orders():
     with get_db() as conn:
-        conn.execute("DELETE FROM orders")
-        conn.execute("DELETE FROM drivers")
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM orders")
+            cur.execute("DELETE FROM drivers")
     return redirect("/orders")
 
 @app.route("/api/parse", methods=["POST"])
@@ -224,32 +240,39 @@ def set_driver():
     order_id = str(data.get("order_id", ""))
     name = data.get("name", "").strip()
     with get_db() as conn:
-        if name:
-            conn.execute("INSERT OR REPLACE INTO drivers (order_id, name) VALUES (?, ?)", (order_id, name))
-        else:
-            conn.execute("DELETE FROM drivers WHERE order_id = ?", (order_id,))
+        with conn.cursor() as cur:
+            if name:
+                cur.execute(
+                    "INSERT INTO drivers (order_id, name) VALUES (%s, %s) ON CONFLICT (order_id) DO UPDATE SET name = EXCLUDED.name",
+                    (order_id, name)
+                )
+            else:
+                cur.execute("DELETE FROM drivers WHERE order_id = %s", (order_id,))
     return jsonify({"ok": True})
 
 @app.route("/api/orders/delete", methods=["POST"])
 def delete_orders():
     ids = request.get_json(force=True).get("ids", [])
     with get_db() as conn:
-        for oid in ids:
-            conn.execute("DELETE FROM orders WHERE id=?", (int(oid),))
-            conn.execute("DELETE FROM drivers WHERE order_id=?", (str(oid),))
+        with conn.cursor() as cur:
+            for oid in ids:
+                cur.execute("DELETE FROM orders WHERE id=%s", (int(oid),))
+                cur.execute("DELETE FROM drivers WHERE order_id=%s", (str(oid),))
     return jsonify({"ok": True})
 
 @app.route("/api/orders/<int:order_id>", methods=["POST"])
 def update_order(order_id):
     data = request.get_json()
     with get_db() as conn:
-        row = conn.execute("SELECT data FROM orders WHERE id=?", (order_id,)).fetchone()
-        if not row:
-            return jsonify({"ok": False}), 404
-        order = json.loads(row["data"])
-        order.update({k: v for k, v in data.items() if not k.startswith("_")})
-        conn.execute("UPDATE orders SET data=? WHERE id=?",
-                     (json.dumps(order, ensure_ascii=False), order_id))
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT data FROM orders WHERE id=%s", (order_id,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"ok": False}), 404
+            order = json.loads(row["data"])
+            order.update({k: v for k, v in data.items() if not k.startswith("_")})
+            cur.execute("UPDATE orders SET data=%s WHERE id=%s",
+                        (json.dumps(order, ensure_ascii=False), order_id))
     return jsonify({"ok": True})
 
 @app.route("/stats")
@@ -265,7 +288,9 @@ def stats():
 
     orders = load_orders()
     with get_db() as conn:
-        driver_rows = conn.execute("SELECT order_id, name FROM drivers").fetchall()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT order_id, name FROM drivers")
+            driver_rows = cur.fetchall()
     drivers = {row["order_id"]: row["name"] for row in driver_rows}
 
     for order in orders:

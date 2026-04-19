@@ -7,9 +7,5 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
-      - key: DB_PATH
-        value: /data/orders.db
-    disk:
-      name: orders-data
-      mountPath: /data
-      sizeGB: 1
+      - key: DATABASE_URL
+        value: postgresql://order_db_ms9k_user:M5O2g5kYzdbOimRmpFn2AjH6HUInt82j@dpg-d7ie25jeo5us73dfti4g-a/order_db_ms9k
