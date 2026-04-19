@@ -895,7 +895,7 @@ function applyFilters() {
     if (currentTab === "all") {
       tabMatch = true;
     } else if (currentTab === "custom") {
-      const n = dateToNum(getCardDateKey(card));
+      const n = dateToNum(card.dataset.date);
       const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
       tabMatch = n !== null && (!f || n >= f) && (!t || n <= t);
     } else {
@@ -952,7 +952,7 @@ function updateCounts() {
   const tabCards = Array.from(all).filter(card => {
     if (currentTab === "all") return true;
     if (currentTab === "custom") {
-      const n = dateToNum(getCardDateKey(card));
+      const n = dateToNum(card.dataset.date);
       const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
       return n !== null && (!f || n >= f) && (!t || n <= t);
     }
