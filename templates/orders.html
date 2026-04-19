@@ -307,6 +307,17 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   </div>
 
   {% if orders %}
+  <!-- Sort + View Toggle -->
+  <div class="view-toggle-bar">
+    <span>排序：</span>
+    <button class="btn-view btn-sort-opt active" onclick="switchSort('date', this)">依預約日期</button>
+    <button class="btn-view btn-sort-opt" onclick="switchSort('created', this)">依建立時間</button>
+    <div style="width:1px;background:#ddd;height:20px;margin:0 6px;flex-shrink:0;"></div>
+    <span>顯示：</span>
+    <button class="btn-view active" data-view="detailed" onclick="switchView('detailed', this)">詳細訂單</button>
+    <button class="btn-view" data-view="simple" onclick="switchView('simple', this)">簡易訂單</button>
+  </div>
+
   <!-- Date Tabs -->
   <div class="tabs-bar" id="tabsBar">
     <button class="tab-btn date-tab-btn active" data-tab="all" onclick="switchTab('all', this)">
@@ -337,17 +348,6 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       <span id="calRangeText">點選開始日期</span>
       <button class="btn-range-clear" onclick="clearDateRange()">清除</button>
     </div>
-  </div>
-
-  <!-- Sort + View Toggle -->
-  <div class="view-toggle-bar">
-    <span>排序：</span>
-    <button class="btn-view btn-sort-opt active" onclick="switchSort('date', this)">依預約日期</button>
-    <button class="btn-view btn-sort-opt" onclick="switchSort('created', this)">依建立時間</button>
-    <div style="width:1px;background:#ddd;height:20px;margin:0 6px;flex-shrink:0;"></div>
-    <span>顯示：</span>
-    <button class="btn-view active" data-view="detailed" onclick="switchView('detailed', this)">詳細訂單</button>
-    <button class="btn-view" data-view="simple" onclick="switchView('simple', this)">簡易訂單</button>
   </div>
 
   <!-- Search -->
