@@ -361,18 +361,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       {% if order.get('created_at') %}
       <div class="card-created">建立：{{ order['created_at'] }}</div>
       {% endif %}
-      <script type="application/json" class="order-data">
-      {% set ns = namespace(pairs=[]) %}
-      {% for field in fields %}
-        {% if order.get(field) %}
-          {% set ns.pairs = ns.pairs + [(field | tojson) + ': ' + (order[field] | tojson)] %}
-        {% endif %}
-      {% endfor %}
-      {% if order.get('created_at') %}
-        {% set ns.pairs = ns.pairs + ['"created_at": ' + (order['created_at'] | tojson)] %}
-      {% endif %}
-      { {{ ns.pairs | join(', ') }} }
-      </script>
+      <script type="application/json" class="order-data">{{ order | tojson }}</script>
     </div>
     {% endfor %}
   </div>
@@ -770,7 +759,7 @@ function switchView(view, btn) {
       if (created) created.style.display = "none";
     } else {
       body.classList.remove("hidden");
-      simple.classList.remove("hidden");
+      simple.classList.add("hidden");
       if (created) created.style.display = "";
     }
   });
