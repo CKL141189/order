@@ -201,7 +201,7 @@ def api_add_orders():
     new_orders = request.get_json(force=True).get("orders", [])
     existing = load_orders()
     existing_map = {o.get("訂單號碼"): i for i, o in enumerate(existing)}
-    now_str = datetime.now().strftime("%Y/%m/%d %H:%M")
+    now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
     for o in new_orders:
         no = o.get("訂單號碼")
         if no and no in existing_map:
