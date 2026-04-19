@@ -87,6 +87,10 @@ def parse_b_order(order_id, text):
     order = {"訂單號碼": order_id}
     if not text.strip():
         return order
+    # Normalize: fullwidth spaces in field names (e.g. 備　　註 → 備註)
+    text = re.sub(r'備[\s\u3000]+註', '備註', text)
+    # Add space after 聯絡地址 if immediately followed by non-space (e.g. 聯絡地址1.)
+    text = re.sub(r'聯絡地址(?=\S)', '聯絡地址 ', text)
     pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ") "
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
@@ -94,7 +98,11 @@ def parse_b_order(order_id, text):
         canonical = FIELD_ALIASES.get(key, key)
         value = parts[i + 1].strip()
         if value:
-            order[canonical] = value
+            # Concatenate duplicate fields (e.g. 用車時間 6:50 + 用車時間 AM上午)
+            if canonical in order:
+                order[canonical] = order[canonical] + " " + value
+            else:
+                order[canonical] = value
     return order if len(order) > 1 else None
 
 def parse_orders(raw_text):
