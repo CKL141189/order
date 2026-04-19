@@ -230,7 +230,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 <div class="container">
 
   <div class="nav-bar">
-    <a href="/" class="btn-nav blue">← 新增訂單</a>
+    <a href="/add" class="btn-nav blue">← 新增訂單</a>
     <h1>訂單列表</h1>
     <div style="display:flex; gap:8px; align-items:center;">
       <form method="post" action="/clear" style="display:inline;" onsubmit="return confirm('確定清除所有訂單及司機資料？')">
@@ -369,7 +369,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   {% else %}
   <div class="no-data">
     <p>尚無訂單</p>
-    <p style="margin-top:14px;"><a href="/">← 前往新增訂單</a></p>
+    <p style="margin-top:14px;"><a href="/add">← 前往新增訂單</a></p>
   </div>
   {% endif %}
 

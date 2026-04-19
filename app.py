@@ -184,8 +184,12 @@ def save_orders(orders):
                 clean = {k: v for k, v in o.items() if not k.startswith("_")}
                 cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
 
-@app.route("/", methods=["GET"])
+@app.route("/")
 def index():
+    return redirect("/orders")
+
+@app.route("/add", methods=["GET"])
+def add_order_page():
     return render_template("index.html")
 
 @app.route("/orders", methods=["GET"])
