@@ -194,7 +194,13 @@ def orders_page():
     date_tabs = get_date_tabs()
     tab_keys = {t["date_key"] for t in date_tabs}
     for order in orders:
-        order["_tab"] = order.get("預約日期", "") if order.get("預約日期", "") in tab_keys else "其他"
+        raw_date = order.get("預約日期", "")
+        try:
+            m, d = raw_date.split("/")
+            norm_date = f"{int(m)}/{int(d)}"
+        except Exception:
+            norm_date = raw_date
+        order["_tab"] = norm_date if norm_date in tab_keys else "其他"
     has_other = any(o["_tab"] == "其他" for o in orders)
     with get_db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
