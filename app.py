@@ -61,7 +61,14 @@ def init_db():
                 )
             """)
 
-init_db()
+_db_initialized = False
+
+@app.before_request
+def ensure_db():
+    global _db_initialized
+    if not _db_initialized:
+        init_db()
+        _db_initialized = True
 
 def parse_order(text):
     order = {}
