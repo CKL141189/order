@@ -142,15 +142,24 @@ async function addOrders() {
     document.getElementById('failedSection').style.display = '';
   }
 }
-function sendContent() {
+async function sendContent() {
   const text = document.getElementById('pasteArea').value.trim();
   if (!text) { alert('請先貼上訂單內容。'); return; }
   const btn = document.getElementById('sendBtn');
-  const formatted = `以下訂單內容無法正確解析，請幫我修復 parser：\n\n${text}`;
-  navigator.clipboard.writeText(formatted).then(() => {
-    btn.textContent = '已複製 ✓';
-    setTimeout(() => btn.textContent = '傳給 Claude', 2000);
+  btn.disabled = true; btn.textContent = '傳送中…';
+  const resp = await fetch('/api/claude/save', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
   });
+  const data = await resp.json();
+  btn.disabled = false;
+  if (data.ok) {
+    btn.textContent = '已記錄 ✓';
+    setTimeout(() => btn.textContent = '傳給 Claude', 2000);
+  } else {
+    btn.textContent = '傳給 Claude';
+    alert('記錄失敗，請重試。');
+  }
 }
 
 async function sendToClaude() {

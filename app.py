@@ -68,6 +68,14 @@ def init_db():
                     resolved BOOLEAN DEFAULT FALSE
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS claude_logs (
+                    id SERIAL PRIMARY KEY,
+                    text TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    resolved BOOLEAN DEFAULT FALSE
+                )
+            """)
 
 _db_initialized = False
 
@@ -277,6 +285,40 @@ def failed_page():
             rows = cur.fetchall()
     items = [dict(r) for r in rows]
     return render_template("failed.html", items=items)
+
+@app.route("/api/claude/save", methods=["POST"])
+def save_claude_log():
+    text = request.get_json(force=True).get("text", "").strip()
+    if not text:
+        return jsonify({"ok": False})
+    now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO claude_logs (text, created_at) VALUES (%s, %s)", (text, now_str))
+    return jsonify({"ok": True})
+
+@app.route("/claude-logs")
+def claude_logs_page():
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, text, created_at, resolved FROM claude_logs ORDER BY id DESC")
+            rows = cur.fetchall()
+    items = [dict(r) for r in rows]
+    return render_template("claude_logs.html", items=items)
+
+@app.route("/api/claude/<int:lid>/resolve", methods=["POST"])
+def resolve_claude_log(lid):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE claude_logs SET resolved=TRUE WHERE id=%s", (lid,))
+    return jsonify({"ok": True})
+
+@app.route("/api/claude/<int:lid>/delete", methods=["POST"])
+def delete_claude_log(lid):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM claude_logs WHERE id=%s", (lid,))
+    return jsonify({"ok": True})
 
 @app.route("/api/failed/unresolved", methods=["GET"])
 def get_unresolved_failed():

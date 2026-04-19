@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>傳給 Claude 的記錄</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5; color: #333; }
+.container { max-width: 900px; margin: 30px auto; padding: 0 20px 60px; }
+.nav-bar { display: flex; align-items: center; margin-bottom: 28px; gap: 10px; }
+.nav-bar h1 { font-size: 1.5rem; color: #2c3e50; flex: 1; text-align: center; }
+.btn-nav { padding: 8px 18px; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-family: inherit; text-decoration: none; display: inline-block; transition: background 0.2s; }
+.btn-nav.blue { background: #4a90e2; } .btn-nav.blue:hover { background: #357abd; }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 18px; }
+.filter-btn { padding: 6px 16px; border: 2px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer; font-size: 0.85rem; font-family: inherit; transition: all 0.15s; }
+.filter-btn.active { background: #8e44ad; border-color: #8e44ad; color: #fff; font-weight: bold; }
+.filter-btn:hover:not(.active) { border-color: #8e44ad; color: #8e44ad; }
+.no-data { text-align: center; color: #aaa; padding: 60px 0; font-size: 1rem; }
+.log-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 14px; overflow: hidden; }
+.log-card.resolved { opacity: 0.5; }
+.log-header { background: #8e44ad; color: #fff; padding: 8px 14px; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+.log-card.resolved .log-header { background: #95a5a6; }
+.log-header .created { flex: 1; opacity: 0.9; }
+.resolved-tag { background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 3px; font-size: 0.78rem; }
+.log-body { padding: 12px 14px; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; color: #444; line-height: 1.7; background: #fafafa; }
+.log-footer { padding: 8px 14px; display: flex; gap: 8px; border-top: 1px solid #f0f0f0; }
+.btn-sm { padding: 5px 14px; font-size: 0.82rem; border-radius: 5px; border: none; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+.btn-resolve { background: #27ae60; color: #fff; } .btn-resolve:hover { background: #1e8449; }
+.btn-delete { background: #e0e0e0; color: #555; } .btn-delete:hover { background: #c8c8c8; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="nav-bar">
+    <a href="/add" class="btn-nav blue">← 新增訂單</a>
+    <h1>傳給 Claude 的記錄</h1>
+    <div style="width:100px"></div>
+  </div>
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('unresolved',this)">未解決 <span id="cnt-u"></span></button>
+    <button class="filter-btn" onclick="setFilter('resolved',this)">已解決 <span id="cnt-r"></span></button>
+    <button class="filter-btn" onclick="setFilter('all',this)">全部</button>
+  </div>
+  {% if items %}
+  <div id="logList">
+    {% for item in items %}
+    <div class="log-card {% if item.resolved %}resolved{% endif %}" data-id="{{ item.id }}" data-resolved="{{ 'true' if item.resolved else 'false' }}">
+      <div class="log-header">
+        <span class="created">{{ item.created_at }}</span>
+        {% if item.resolved %}<span class="resolved-tag">已解決</span>{% endif %}
+      </div>
+      <div class="log-body">{{ item.text }}</div>
+      <div class="log-footer">
+        {% if not item.resolved %}
+        <button class="btn-sm btn-resolve" onclick="resolve(this)">標記已解決</button>
+        {% endif %}
+        <button class="btn-sm btn-delete" onclick="del(this)">刪除</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="no-data">目前沒有記錄</div>
+  {% endif %}
+</div>
+<script>
+let currentFilter = 'unresolved';
+function updateCounts() {
+  const cards = document.querySelectorAll('.log-card');
+  let u=0, r=0;
+  cards.forEach(c => c.dataset.resolved==='true' ? r++ : u++);
+  document.getElementById('cnt-u').textContent = u ? `(${u})` : '';
+  document.getElementById('cnt-r').textContent = r ? `(${r})` : '';
+}
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.log-card').forEach(card => {
+    if (f==='all') { card.style.display=''; return; }
+    card.style.display = (f==='resolved')===(card.dataset.resolved==='true') ? '' : 'none';
+  });
+}
+function resolve(btn) {
+  const card = btn.closest('.log-card');
+  fetch(`/api/claude/${card.dataset.id}/resolve`, {method:'POST'}).then(r=>r.json()).then(d=>{
+    if (d.ok) {
+      card.dataset.resolved='true'; card.classList.add('resolved');
+      const h = card.querySelector('.log-header');
+      h.innerHTML = `<span class="created">${h.querySelector('.created').textContent}</span><span class="resolved-tag">已解決</span>`;
+      btn.remove(); updateCounts();
+      if (currentFilter==='unresolved') card.style.display='none';
+    }
+  });
+}
+function del(btn) {
+  const card = btn.closest('.log-card');
+  fetch(`/api/claude/${card.dataset.id}/delete`, {method:'POST'}).then(r=>r.json()).then(d=>{
+    if (d.ok) { card.remove(); updateCounts(); }
+  });
+}
+setFilter('unresolved', document.querySelector('.filter-btn.active'));
+updateCounts();
+</script>
+</body>
+</html>
