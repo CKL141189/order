@@ -136,14 +136,17 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .cal-nav-btn { background: #f0f0f0; border: none; border-radius: 5px; width: 28px; height: 28px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; }
 .cal-nav-btn:hover { background: #d0e4f7; }
 .cal-title { font-weight: bold; font-size: 0.95rem; color: #2c3e50; min-width: 100px; text-align: center; }
-.cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, 34px); gap: 3px; }
+.cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; width: 100%; }
 .cal-weekdays span { font-size: 0.75rem; color: #999; text-align: center; padding: 3px 0; }
-.cal-day { width: 34px; height: 30px; border: none; background: #f5f5f5; border-radius: 4px; cursor: pointer; font-size: 0.83rem; font-family: inherit; }
+.cal-day { width: 100%; height: 40px; border: none; background: #f5f5f5; border-radius: 4px; cursor: pointer; font-size: 0.83rem; font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
 .cal-day:hover:not(.empty) { background: #d0e4f7; }
 .cal-day.empty { background: transparent; cursor: default; }
 .cal-day.today { border: 2px solid #4a90e2; font-weight: bold; }
 .cal-day.sel-start, .cal-day.sel-end { background: #4a90e2; color: #fff; font-weight: bold; }
 .cal-day.in-range { background: #cce0f5; }
+.cal-count { font-size: 0.6rem; color: #4a90e2; line-height: 1; }
+.cal-day.sel-start .cal-count, .cal-day.sel-end .cal-count { color: rgba(255,255,255,0.85); }
+.cal-day.in-range .cal-count { color: #4a90e2; }
 .cal-range-info { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 0.85rem; color: #555; }
 .btn-range-clear { background: #e0e0e0; color: #555; padding: 4px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-family: inherit; }
 .btn-range-clear:hover { background: #c8c8c8; }
@@ -285,8 +288,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   .order-grid { grid-template-columns: 1fr; gap: 10px; }
 
   /* Calendar */
-  .cal-weekdays, .cal-grid { grid-template-columns: repeat(7, 1fr); }
-  .cal-day { width: 100%; }
+  .cal-day { height: 42px; font-size: 0.8rem; }
 }
 </style>
 </head>
@@ -499,6 +501,22 @@ let calMonth = new Date().getMonth() + 1;
 let calRangeStart = null;
 let calRangeEnd = null;
 
+function buildDateCountMap() {
+  const map = {};
+  document.querySelectorAll(".order-card").forEach(card => {
+    let n;
+    if (currentSort === "created") {
+      const cr = card.dataset.created || "";
+      const mat = cr.match(/\d{4}\/(\d+)\/(\d+)/);
+      n = mat ? parseInt(mat[1]) * 100 + parseInt(mat[2]) : null;
+    } else {
+      n = dateToNum(card.dataset.date);
+    }
+    if (n !== null) map[n] = (map[n] || 0) + 1;
+  });
+  return map;
+}
+
 function renderCalendar() {
   const y = calYear, m = calMonth;
   document.getElementById("calTitle").textContent = `${y}年 ${m}月`;
@@ -506,13 +524,16 @@ function renderCalendar() {
   const totalDays = new Date(y, m, 0).getDate();
   const today = new Date();
   const grid = document.getElementById("calGrid");
+  const dateCountMap = buildDateCountMap();
   grid.innerHTML = "";
   for (let i = 0; i < firstDow; i++) {
     const el = document.createElement("div"); el.className = "cal-day empty"; grid.appendChild(el);
   }
   for (let d = 1; d <= totalDays; d++) {
     const btn = document.createElement("button");
-    btn.className = "cal-day"; btn.textContent = d;
+    btn.className = "cal-day";
+    const cnt = dateCountMap[m * 100 + d] || 0;
+    btn.innerHTML = `<span>${d}</span>${cnt ? `<span class="cal-count">${cnt}</span>` : `<span class="cal-count" style="opacity:0">0</span>`}`;
     if (y === today.getFullYear() && m === today.getMonth() + 1 && d === today.getDate())
       btn.classList.add("today");
     const n = y * 10000 + m * 100 + d;
@@ -526,7 +547,7 @@ function renderCalendar() {
   }
   const txt = document.getElementById("calRangeText");
   if (!calRangeStart) txt.textContent = "點選開始日期";
-  else if (!calRangeEnd) txt.textContent = `${calRangeStart.month}/${calRangeStart.day} 起，再點結束日期`;
+  else if (!calRangeEnd) txt.textContent = `${calRangeStart.month}/${calRangeStart.day} — 再點結束日期（可點同一天）`;
   else txt.textContent = `${calRangeStart.month}/${calRangeStart.day} — ${calRangeEnd.month}/${calRangeEnd.day}`;
 }
 
@@ -535,14 +556,11 @@ function calSelectDay(y, m, d) {
   const sn = calRangeStart ? calRangeStart.year * 10000 + calRangeStart.month * 100 + calRangeStart.day : null;
   if (!calRangeStart || calRangeEnd || (sn && n < sn)) {
     calRangeStart = { year: y, month: m, day: d }; calRangeEnd = null;
-  } else if (sn && n > sn) {
+    dateRangeFrom = null; dateRangeTo = null;
+  } else {
     calRangeEnd = { year: y, month: m, day: d };
     dateRangeFrom = `${calRangeStart.month}/${calRangeStart.day}`;
     dateRangeTo   = `${calRangeEnd.month}/${calRangeEnd.day}`;
-    applyFilters();
-  } else {
-    calRangeStart = null; calRangeEnd = null;
-    dateRangeFrom = null; dateRangeTo = null;
     applyFilters();
   }
   renderCalendar();
@@ -1228,6 +1246,7 @@ function switchSort(sort, btn) {
   btn.classList.add("active");
   applySort();
   applyFilters();
+  if (currentTab === "custom") renderCalendar();
 }
 
 // Init
