@@ -115,11 +115,17 @@ def order_sort_key(order):
         date = datetime(datetime.now().year, month, day)
     except Exception:
         date = datetime.max
-    time_str = time_str.replace("上午", "").replace("下午", "").replace("：", ":").strip()
-    try:
-        t = datetime.strptime(time_str, "%H:%M")
-        time_val = (t.hour, t.minute)
-    except Exception:
+    is_pm = "下午" in time_str
+    is_am = "上午" in time_str
+    m = re.search(r'(\d{1,2})[：:](\d{2})', time_str)
+    if m:
+        h, minute = int(m.group(1)), int(m.group(2))
+        if is_pm and h < 12:
+            h += 12
+        if is_am and h == 12:
+            h = 0
+        time_val = (h, minute)
+    else:
         time_val = (0, 0)
     return (date, time_val)
 
