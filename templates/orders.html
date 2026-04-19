@@ -542,14 +542,14 @@ function formatTime24(timeStr) {
 }
 
 function truncateAddr(addr) {
-  return addr.replace(/\d*[巷弄號樓].*/g, '').trim();
+  if (!addr) return "";
+  const result = addr.replace(/\d*[巷弄號樓].*/g, '').trim();
+  return result || addr.trim();
 }
 
 function generateSimpleParts(data) {
   const time    = formatTime24(data["預約時間"] || "");
   const service = data["服務項目"] || "";
-  const rawAddr = data["接送地址"] || data["接送順序"] || data["連繫地址"] || data["出發地址"] || "";
-  const address = truncateAddr(rawAddr);
   const flight  = data["航班編號"] || "";
   const carType = data["接送車型"] || "";
   const payment = data["付費方式"] || "";
@@ -557,11 +557,24 @@ function generateSimpleParts(data) {
   const rawExtra = data["加點地址"] || "";
   const extraAddr = truncateAddr(rawExtra);
 
+  // Collect all address fields in order, combine non-empty ones
+  const addrParts = ["接送地址", "接送順序", "連繫地址"]
+    .map(f => truncateAddr(data[f] || ""))
+    .filter(Boolean);
+  // Deduplicate: skip if already contained in previous part
+  const dedupedParts = [];
+  addrParts.forEach(p => {
+    if (!dedupedParts.some(existing => existing.includes(p) || p.includes(existing))) {
+      dedupedParts.push(p);
+    }
+  });
+  const address = dedupedParts.join("→");
+
   let mainPart = "";
   if (service.includes("接機")) {
-    mainPart = (flight || "") + "接機" + address;
+    mainPart = (flight ? flight + "接機" : "接機") + (address ? address : "");
   } else if (service.includes("送機")) {
-    mainPart = address.includes("➡️") ? "送機" + address : address + "送機";
+    mainPart = (address ? address : "") + "送機";
   } else if (service.includes("單程")) {
     mainPart = "單程" + address;
   } else {
