@@ -83,17 +83,22 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .card-created { font-size: 0.75rem; color: #bbb; padding: 3px 14px 7px; text-align: right; }
 
 /* Search bar */
-.search-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
-.search-bar input {
-  flex: 1; padding: 9px 14px; border: 1px solid #ddd; border-radius: 20px;
-  font-size: 0.9rem; font-family: inherit; background: #fff;
+.search-bar { margin-bottom: 16px; }
+.search-input-wrap {
+  position: relative; display: inline-flex; align-items: center;
+  width: 260px; max-width: 100%;
 }
-.search-bar input:focus { outline: none; border-color: #4a90e2; }
+.search-input-wrap input {
+  width: 100%; padding: 8px 32px 8px 16px; border: 1px solid #ddd; border-radius: 20px;
+  font-size: 0.88rem; font-family: inherit; background: #fff;
+}
+.search-input-wrap input:focus { outline: none; border-color: #4a90e2; }
 .btn-search-clear {
-  padding: 7px 14px; border: none; border-radius: 20px;
-  background: #e0e0e0; color: #666; cursor: pointer; font-size: 0.85rem; font-family: inherit;
+  position: absolute; right: 12px;
+  border: none; background: none; color: #bbb; cursor: pointer;
+  font-size: 0.9rem; padding: 0; line-height: 1; font-family: inherit;
 }
-.btn-search-clear:hover { background: #c8c8c8; }
+.btn-search-clear:hover { color: #555; }
 
 /* Grid */
 .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
@@ -345,8 +350,10 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 
   <!-- Search -->
   <div class="search-bar">
-    <input type="text" id="searchInput" placeholder="搜尋訂單號碼或電話號碼…" oninput="applyFilters()">
-    <button class="btn-search-clear" onclick="clearSearch()">清除</button>
+    <div class="search-input-wrap">
+      <input type="text" id="searchInput" placeholder="搜尋訂單號碼或電話…" oninput="applyFilters()">
+      <button class="btn-search-clear" onclick="clearSearch()">✕</button>
+    </div>
   </div>
 
   <!-- Driver Filter -->

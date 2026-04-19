@@ -123,11 +123,14 @@ def parse_orders(raw_text):
             blocks[-1][1].append(line)
 
     orders = []
+    failed = []
     for fmt, block_lines in blocks:
         if fmt == "K":
             order = parse_order("".join(block_lines))
             if order:
                 orders.append(order)
+            else:
+                failed.append("\n".join(block_lines))
         else:
             text = " ".join(block_lines)
             m = re.match(r'^([BbKk]\d{10,})\s*(.*)', text, re.DOTALL)
@@ -135,7 +138,11 @@ def parse_orders(raw_text):
                 order = parse_b_order(m.group(1), m.group(2).strip())
                 if order:
                     orders.append(order)
-    return orders
+                else:
+                    failed.append("\n".join(block_lines))
+            else:
+                failed.append("\n".join(block_lines))
+    return orders, failed
 
 def order_sort_key(order):
     date_str = order.get("預約日期", "")
@@ -239,8 +246,8 @@ def clear_orders():
 @app.route("/api/parse", methods=["POST"])
 def api_parse():
     text = request.get_json(force=True).get("text", "")
-    orders = parse_orders(text)
-    return jsonify({"orders": orders})
+    orders, failed = parse_orders(text)
+    return jsonify({"orders": orders, "failed": failed})
 
 @app.route("/api/add_orders", methods=["POST"])
 def api_add_orders():

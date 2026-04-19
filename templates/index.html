@@ -21,12 +21,26 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .input-section label { font-weight: bold; display: block; margin-bottom: 10px; color: #555; font-size: 1rem; }
 textarea { width: 100%; height: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9rem; resize: vertical; font-family: inherit; }
 textarea:focus { outline: none; border-color: #4a90e2; }
-.btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.btn-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
 button { padding: 10px 28px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: background 0.2s; }
 .btn-add { background: #27ae60; color: #fff; }
 .btn-add:hover:not(:disabled) { background: #1e8449; }
 .btn-add:disabled { background: #a8d5b5; cursor: not-allowed; }
-.msg { margin-top: 12px; font-size: 0.88rem; color: #888; }
+.btn-goto { background: #4a90e2; color: #fff; }
+.btn-goto:hover { background: #357abd; }
+
+.result-msg { margin-top: 14px; font-size: 0.95rem; font-weight: bold; }
+.result-msg.success { color: #27ae60; }
+.result-msg.partial { color: #e67e22; }
+.result-msg.error { color: #e74c3c; }
+
+.failed-section { margin-top: 18px; }
+.failed-section label { font-size: 0.88rem; color: #e74c3c; font-weight: bold; display: block; margin-bottom: 8px; }
+.failed-item {
+  background: #fff8f8; border: 1px solid #f5c6cb; border-radius: 6px;
+  padding: 10px 14px; margin-bottom: 8px; font-size: 0.82rem; color: #555;
+  white-space: pre-wrap; word-break: break-all; line-height: 1.6;
+}
 </style>
 </head>
 <body>
@@ -43,11 +57,16 @@ button { padding: 10px 28px; border: none; border-radius: 6px; cursor: pointer; 
 
   <div class="input-section">
     <label>貼上訂單資訊（可一次貼入多筆）</label>
-    <textarea id="pasteArea" placeholder="貼上訂單文字，系統將自動解析並直接新增至訂單列表"></textarea>
+    <textarea id="pasteArea" placeholder="貼上訂單文字，系統將自動解析並新增至訂單列表"></textarea>
     <div class="btn-row">
       <button type="button" class="btn-add" id="addBtn" onclick="addOrders()">新增訂單</button>
+      <button type="button" class="btn-goto" id="gotoBtn" onclick="window.location.href='/orders'" style="display:none">查看訂單列表 →</button>
     </div>
-    <div class="msg" id="msg"></div>
+    <div class="result-msg" id="resultMsg"></div>
+    <div class="failed-section" id="failedSection" style="display:none">
+      <label id="failedLabel"></label>
+      <div id="failedList"></div>
+    </div>
   </div>
 
 </div>
@@ -56,9 +75,11 @@ async function addOrders() {
   const text = document.getElementById('pasteArea').value.trim();
   if (!text) { window.location.href = '/orders'; return; }
   const btn = document.getElementById('addBtn');
-  const msg = document.getElementById('msg');
+  const resultMsg = document.getElementById('resultMsg');
   btn.disabled = true; btn.textContent = '解析中…';
-  msg.textContent = '';
+  resultMsg.textContent = ''; resultMsg.className = 'result-msg';
+  document.getElementById('failedSection').style.display = 'none';
+  document.getElementById('gotoBtn').style.display = 'none';
 
   const parseResp = await fetch('/api/parse', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -66,23 +87,53 @@ async function addOrders() {
   });
   const parseData = await parseResp.json();
   const orders = parseData.orders || [];
+  const failed = parseData.failed || [];
 
-  if (!orders.length) {
-    btn.disabled = false; btn.textContent = '新增訂單';
-    msg.textContent = '未能解析出任何訂單，請確認格式後重試。';
+  btn.disabled = false; btn.textContent = '新增訂單';
+
+  if (!orders.length && !failed.length) {
+    resultMsg.textContent = '未能解析出任何訂單，請確認格式後重試。';
+    resultMsg.className = 'result-msg error';
     return;
   }
 
-  const saveResp = await fetch('/api/add_orders', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orders })
-  });
-  const saveData = await saveResp.json();
-  if (saveData.ok) {
-    window.location.href = '/orders';
+  let saved = 0;
+  if (orders.length) {
+    const saveResp = await fetch('/api/add_orders', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orders })
+    });
+    const saveData = await saveResp.json();
+    if (saveData.ok) saved = orders.length;
+  }
+
+  if (saved > 0 && failed.length === 0) {
+    resultMsg.textContent = `成功新增 ${saved} 筆訂單`;
+    resultMsg.className = 'result-msg success';
+    document.getElementById('pasteArea').value = '';
+  } else if (saved > 0 && failed.length > 0) {
+    resultMsg.textContent = `成功新增 ${saved} 筆，無法解析 ${failed.length} 筆`;
+    resultMsg.className = 'result-msg partial';
   } else {
-    btn.disabled = false; btn.textContent = '新增訂單';
-    msg.textContent = '儲存失敗，請重試。';
+    resultMsg.textContent = `無法解析 ${failed.length} 筆訂單`;
+    resultMsg.className = 'result-msg error';
+  }
+
+  if (saved > 0) {
+    document.getElementById('gotoBtn').style.display = '';
+  }
+
+  if (failed.length > 0) {
+    document.getElementById('failedLabel').textContent = `以下 ${failed.length} 筆無法解析，請確認格式：`;
+    const list = document.getElementById('failedList');
+    list.innerHTML = '';
+    failed.forEach(f => {
+      const div = document.createElement('div');
+      div.className = 'failed-item';
+      div.textContent = f;
+      list.appendChild(div);
+    });
+    document.getElementById('failedSection').style.display = '';
   }
 }
 </script>
