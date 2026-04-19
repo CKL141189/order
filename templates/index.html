@@ -65,6 +65,7 @@ button { padding: 10px 28px; border: none; border-radius: 6px; cursor: pointer; 
     <textarea id="pasteArea" placeholder="貼上訂單文字，系統將自動解析並新增至訂單列表"></textarea>
     <div class="btn-row">
       <button type="button" class="btn-add" id="addBtn" onclick="addOrders()">新增訂單</button>
+      <button type="button" class="btn-claude" id="sendBtn" onclick="sendContent()">傳給 Claude</button>
       <button type="button" class="btn-goto" id="gotoBtn" onclick="window.location.href='/orders'" style="display:none">查看訂單列表 →</button>
     </div>
     <div class="result-msg" id="resultMsg"></div>
@@ -141,6 +142,17 @@ async function addOrders() {
     document.getElementById('failedSection').style.display = '';
   }
 }
+function sendContent() {
+  const text = document.getElementById('pasteArea').value.trim();
+  if (!text) { alert('請先貼上訂單內容。'); return; }
+  const btn = document.getElementById('sendBtn');
+  const formatted = `以下訂單內容無法正確解析，請幫我修復 parser：\n\n${text}`;
+  navigator.clipboard.writeText(formatted).then(() => {
+    btn.textContent = '已複製 ✓';
+    setTimeout(() => btn.textContent = '傳給 Claude', 2000);
+  });
+}
+
 async function sendToClaude() {
   const btn = document.getElementById('claudeBtn');
   btn.disabled = true; btn.textContent = '讀取中…';
