@@ -358,7 +358,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     </div>
   </div>
 
-  <!-- Driver Filter -->
+  <!-- Driver + Invoice Filter -->
   <div class="tabs-bar" id="driverFilterBar">
     <button class="tab-btn driver-filter-btn active" data-driver-filter="all" onclick="switchDriverFilter('all', this)">全部司機</button>
     <button class="tab-btn driver-filter-btn" data-driver-filter="assigned" onclick="switchDriverFilter('assigned', this)">
@@ -366,6 +366,10 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     </button>
     <button class="tab-btn driver-filter-btn" data-driver-filter="unassigned" onclick="switchDriverFilter('unassigned', this)">
       未指定司機 <span class="tab-count" id="cnt-unassigned"></span>
+    </button>
+    <div style="width:1px;background:#ddd;flex-shrink:0;"></div>
+    <button class="tab-btn" id="invoiceFilterBtn" onclick="toggleInvoiceFilter(this)" style="border-color:#e67e22;color:#e67e22;">
+      需要發票 <span class="tab-count" id="cnt-invoice"></span>
     </button>
   </div>
 
@@ -391,7 +395,8 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   <div class="order-grid" id="orderGrid">
     {% for order in orders %}
     {% set service = order.get("服務項目", "") %}
-    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
+    {% set _note = order.get('備註', '') %}{% set _has_inv = '統一發票' in _note or '統編' in _note or '統一編號' in _note or '發票' in _note %}
+    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
       <div class="card-header">
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
@@ -486,6 +491,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 let currentTab = "all";
 let currentDriverFilter = "all";
 let currentView = "detailed";
+let currentInvoiceFilter = false;
 let dateRangeFrom = null;
 let dateRangeTo = null;
 
@@ -800,7 +806,6 @@ function getCardText(card) {
   }
   const lines = [];
   FIELDS_ORDER.forEach(f => { if (data[f]) lines.push(f + "：" + data[f]); });
-  if (driver) lines.push("司機：" + driver);
   return lines.join("\n");
 }
 
@@ -922,8 +927,9 @@ function applyFilters() {
     const driverMatch = currentDriverFilter === "all" ||
       (currentDriverFilter === "assigned" && card.dataset.hasDriver === "yes") ||
       (currentDriverFilter === "unassigned" && card.dataset.hasDriver === "no");
+    const invoiceMatch = !currentInvoiceFilter || card.dataset.hasInvoice === "yes";
     const searchMatch = !searchTerm || card.dataset.search.toLowerCase().includes(searchTerm);
-    card.classList.toggle("hidden", !(tabMatch && driverMatch && searchMatch));
+    card.classList.toggle("hidden", !(tabMatch && driverMatch && invoiceMatch && searchMatch));
   });
   updateSelCount();
   updateCounts();
@@ -957,6 +963,14 @@ function switchDriverFilter(filter, btn) {
   applyFilters();
 }
 
+function toggleInvoiceFilter(btn) {
+  currentInvoiceFilter = !currentInvoiceFilter;
+  btn.style.background = currentInvoiceFilter ? "#e67e22" : "";
+  btn.style.color = currentInvoiceFilter ? "#fff" : "#e67e22";
+  btn.style.borderColor = "#e67e22";
+  applyFilters();
+}
+
 function updateCounts() {
   const all = document.querySelectorAll(".order-card");
   document.getElementById("cnt-all").textContent = `(${all.length})`;
@@ -978,10 +992,13 @@ function updateCounts() {
   });
   const assignedCount = tabCards.filter(c => c.dataset.hasDriver === "yes").length;
   const unassignedCount = tabCards.filter(c => c.dataset.hasDriver === "no").length;
+  const invoiceCount = tabCards.filter(c => c.dataset.hasInvoice === "yes").length;
   const cntAssigned = document.getElementById("cnt-assigned");
   const cntUnassigned = document.getElementById("cnt-unassigned");
+  const cntInvoice = document.getElementById("cnt-invoice");
   if (cntAssigned) cntAssigned.textContent = assignedCount ? `(${assignedCount})` : "";
   if (cntUnassigned) cntUnassigned.textContent = unassignedCount ? `(${unassignedCount})` : "";
+  if (cntInvoice) cntInvoice.textContent = invoiceCount ? `(${invoiceCount})` : "";
 }
 
 function toggleCard(card, event) {
