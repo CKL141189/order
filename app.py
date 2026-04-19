@@ -190,15 +190,16 @@ def order_sort_key(order):
     return (date, time_val)
 
 def get_date_tabs():
-    today = datetime.now()
-    labels = ["昨天", "今天", "明天", "後天"]
+    today = datetime.utcnow() + timedelta(hours=8)
+    labels = ["昨天", "今天", "明天", "後天", "", ""]
     tabs = []
     for i, label in enumerate(labels):
         d = today + timedelta(days=i - 1)
+        display = f"{d.month}/{d.day}"
         tabs.append({
             "label": label,
-            "date_key": f"{d.month}/{d.day}",
-            "display": f"{d.month}/{d.day}",
+            "date_key": display,
+            "display": display,
         })
     return tabs
 
