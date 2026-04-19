@@ -225,6 +225,24 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .btn-copy.copied { background: #95a5a6; }
 button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: background 0.2s; }
 
+/* Internal note */
+.card-note { padding: 6px 14px 8px; }
+.card-note.hidden { display: none; }
+.note-input {
+  width: 100%; border: 1px solid #e8e8e8; border-radius: 5px;
+  padding: 6px 10px; font-size: 0.82rem; font-family: inherit;
+  resize: none; height: 52px; color: #555; background: #fafafa;
+  transition: border-color 0.15s; line-height: 1.5;
+}
+.note-input:focus { outline: none; border-color: #f39c12; background: #fff; }
+.note-input::placeholder { color: #ccc; }
+.note-badge {
+  display: inline-block; background: #f39c12; color: #fff;
+  font-size: 0.62rem; padding: 1px 5px; border-radius: 3px;
+  margin-left: 6px; vertical-align: middle; font-weight: bold; letter-spacing: 0.03em;
+}
+.note-badge.hidden { display: none; }
+
 @media (max-width: 640px) {
   .container { margin: 10px auto; padding: 0 10px 60px; }
 
@@ -359,7 +377,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       <div class="card-header">
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
-          <div class="order-no">{{ order.get("訂單號碼", "—") }}</div>
+          <div class="order-no">{{ order.get("訂單號碼", "—") }}<span class="note-badge{% if not order.get('note') %} hidden{% endif %}">備註</span></div>
           <div class="date-time">{{ order.get("預約日期", "") }} {{ order.get("預約時間", "") }}</div>
         </div>
         <div class="card-header-actions">
@@ -389,6 +407,9 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       <div class="card-footer-btns" {% if drivers.get(order._id | string) %}style="display:none"{% endif %}>
         <button class="btn-assign-driver" onclick="assignDriver(this, event)">＋ 指定司機</button>
         <button class="btn-no-driver" onclick="markNoDriver(this, event)">不須指定</button>
+      </div>
+      <div class="card-note">
+        <textarea class="note-input" placeholder="內部備註…" onclick="event.stopPropagation()" onblur="saveNote(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur()}">{{ order.get('note', '') }}</textarea>
       </div>
       {% if order.get('created_at') %}
       <div class="card-created">建立：{{ order['created_at'] }}</div>
@@ -784,16 +805,33 @@ function switchView(view, btn) {
     const body    = card.querySelector(".card-body");
     const simple  = card.querySelector(".card-simple");
     const created = card.querySelector(".card-created");
+    const note    = card.querySelector(".card-note");
     if (!body || !simple) return;
     if (view === "simple") {
       body.classList.add("hidden");
       simple.classList.remove("hidden");
       if (created) created.style.display = "none";
+      if (note) note.classList.add("hidden");
     } else {
       body.classList.remove("hidden");
       simple.classList.add("hidden");
       if (created) created.style.display = "";
+      if (note) note.classList.remove("hidden");
     }
+  });
+}
+
+function saveNote(textarea) {
+  const card = textarea.closest(".order-card");
+  const id = card.dataset.id;
+  const note = textarea.value.trim();
+  textarea.value = note;
+  const badge = card.querySelector(".note-badge");
+  if (badge) badge.classList.toggle("hidden", !note);
+  fetch(`/api/orders/${id}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ note })
   });
 }
 
