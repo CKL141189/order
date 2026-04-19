@@ -760,12 +760,15 @@ function switchView(view, btn) {
   document.querySelectorAll(".btn-view").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   document.querySelectorAll(".order-card").forEach(card => {
+    const created = card.querySelector(".card-created");
     if (view === "simple") {
       card.querySelector(".card-body").classList.add("hidden");
       card.querySelector(".card-simple").classList.remove("hidden");
+      if (created) created.style.display = "none";
     } else {
       card.querySelector(".card-body").classList.remove("hidden");
       card.querySelector(".card-simple").classList.remove("hidden");
+      if (created) created.style.display = "";
     }
   });
 }
