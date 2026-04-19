@@ -1069,7 +1069,7 @@ function parseMinutes(timeStr) {
   const pm = s.includes("下午");
   const am = s.includes("上午");
   s = s.replace("上午", "").replace("下午", "").trim();
-  const m = s.match(/(\d{1,2}):(\d{2})/);
+  const m = s.match(/(\d{1,2})\s*:\s*(\d{2})/);
   if (!m) return null;
   let h = parseInt(m[1]), min = parseInt(m[2]);
   if (pm && h < 12) h += 12;

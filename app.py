@@ -139,7 +139,7 @@ def order_sort_key(order):
         date = datetime.max
     is_pm = "下午" in time_str
     is_am = "上午" in time_str
-    m = re.search(r'(\d{1,2})[：:](\d{2})', time_str)
+    m = re.search(r'(\d{1,2})\s*[：:]\s*(\d{2})', time_str)
     if m:
         h, minute = int(m.group(1)), int(m.group(2))
         if is_pm and h < 12:
