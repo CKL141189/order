@@ -224,6 +224,38 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .btn-copy:hover { background: #1e8449; }
 .btn-copy.copied { background: #95a5a6; }
 button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-family: inherit; transition: background 0.2s; }
+
+@media (max-width: 640px) {
+  .container { margin: 10px auto; padding: 0 10px 60px; }
+
+  /* Nav: title on top, buttons below */
+  .nav-bar { flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 14px; }
+  .nav-bar h1 { width: 100%; order: -1; font-size: 1.2rem; text-align: center; }
+  .btn-nav { padding: 6px 12px; font-size: 0.82rem; }
+
+  /* Date tabs */
+  .tabs-bar { gap: 5px; }
+  .tab-btn { padding: 6px 10px; font-size: 0.82rem; }
+
+  /* Sort/View toggles: wrap to 2 rows */
+  .view-toggle-bar { flex-wrap: wrap; gap: 5px; }
+  .btn-view { padding: 5px 10px; font-size: 0.82rem; }
+
+  /* Search */
+  .search-bar input { font-size: 0.88rem; }
+
+  /* Toolbar: wrap, sel-info takes full row */
+  .toolbar { gap: 5px; padding: 8px 10px; }
+  .toolbar .sel-info { width: 100%; margin-bottom: 2px; }
+  .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+  /* Single column cards */
+  .order-grid { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Calendar */
+  .cal-weekdays, .cal-grid { grid-template-columns: repeat(7, 1fr); }
+  .cal-day { width: 100%; }
+}
 </style>
 </head>
 <body>
