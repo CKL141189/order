@@ -117,7 +117,7 @@ def parse_orders(raw_text):
     for line in lines:
         if _is_k_start(line):
             blocks.append(["K", [line]])
-        elif re.match(r'^[BbKk]\d{10,}(\s|$)', line) and not _is_k_start(line):
+        elif re.match(r'^[BbKk]\d{10,}', line) and not _is_k_start(line):
             blocks.append(["B", [line]])
         elif blocks:
             blocks[-1][1].append(line)
