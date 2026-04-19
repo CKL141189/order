@@ -60,6 +60,14 @@ def init_db():
                     name TEXT NOT NULL
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS failed_orders (
+                    id SERIAL PRIMARY KEY,
+                    text TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    resolved BOOLEAN DEFAULT FALSE
+                )
+            """)
 
 _db_initialized = False
 
@@ -247,7 +255,38 @@ def clear_orders():
 def api_parse():
     text = request.get_json(force=True).get("text", "")
     orders, failed = parse_orders(text)
+    if failed:
+        now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                for t in failed:
+                    cur.execute("SELECT id FROM failed_orders WHERE text=%s AND resolved=FALSE", (t,))
+                    if not cur.fetchone():
+                        cur.execute("INSERT INTO failed_orders (text, created_at) VALUES (%s, %s)", (t, now_str))
     return jsonify({"orders": orders, "failed": failed})
+
+@app.route("/failed")
+def failed_page():
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, text, created_at, resolved FROM failed_orders ORDER BY id DESC")
+            rows = cur.fetchall()
+    items = [dict(r) for r in rows]
+    return render_template("failed.html", items=items)
+
+@app.route("/api/failed/<int:fid>/resolve", methods=["POST"])
+def resolve_failed(fid):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE failed_orders SET resolved=TRUE WHERE id=%s", (fid,))
+    return jsonify({"ok": True})
+
+@app.route("/api/failed/<int:fid>/delete", methods=["POST"])
+def delete_failed(fid):
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM failed_orders WHERE id=%s", (fid,))
+    return jsonify({"ok": True})
 
 @app.route("/api/add_orders", methods=["POST"])
 def api_add_orders():
