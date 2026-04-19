@@ -245,11 +245,12 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 
 /* Peek detail button in simple view */
 .btn-peek-detail {
-  display: block; width: 100%; background: none; border: none; border-top: 1px solid #eef2f7;
-  color: #4a90e2; font-size: 0.8rem; font-family: inherit; cursor: pointer;
-  padding: 5px 0; margin-top: 6px; text-align: center; transition: background 0.15s;
+  display: block; width: fit-content; margin-left: auto;
+  background: none; border: 1px solid #d0e4f5; border-radius: 10px;
+  color: #a0bcd8; font-size: 0.72rem; font-family: inherit; cursor: pointer;
+  padding: 2px 10px; margin-top: 6px; transition: all 0.15s;
 }
-.btn-peek-detail:hover { background: #f0f7ff; }
+.btn-peek-detail:hover { border-color: #4a90e2; color: #4a90e2; }
 
 @media (max-width: 640px) {
   .container { margin: 10px auto; padding: 0 10px 60px; }
