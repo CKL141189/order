@@ -68,8 +68,18 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .btn-share-bulk { background: #27ae60; color: #fff; }
 .btn-share-bulk:hover:not(:disabled) { background: #1e8449; }
 .btn-share-bulk:disabled { background: #a8d5b5; cursor: not-allowed; }
+.btn-delete-bulk { background: #e74c3c; color: #fff; }
+.btn-delete-bulk:hover:not(:disabled) { background: #c0392b; }
+.btn-delete-bulk:disabled { background: #f0a8a0; cursor: not-allowed; }
 .toolbar-divider { width: 1px; height: 22px; background: #ddd; flex-shrink: 0; }
 .toolbar-group-label { font-size: 0.8rem; color: #999; white-space: nowrap; }
+.btn-no-driver {
+  border: none; background: none; cursor: pointer; font-size: 0.8rem;
+  color: #aaa; padding: 6px 14px; width: 50%; text-align: left;
+  font-family: inherit; border-top: 1px solid #f0f0f0; border-left: 1px solid #f0f0f0;
+}
+.btn-no-driver:hover { background: #f9f9f9; color: #95a5a6; }
+.card-footer-btns { display: flex; }
 
 /* Grid */
 .order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
@@ -227,11 +237,6 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       {{ tab.label }} {{ tab.display }} <span class="tab-count" id="cnt-{{ loop.index }}"></span>
     </button>
     {% endfor %}
-    {% if has_other %}
-    <button class="tab-btn date-tab-btn" data-tab="其他" onclick="switchTab('其他', this)">
-      其他 <span class="tab-count" id="cnt-other"></span>
-    </button>
-    {% endif %}
     <button class="tab-btn date-tab-btn" data-tab="custom" onclick="switchTab('custom', this)">
       自訂區間
     </button>
@@ -287,6 +292,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     <button class="btn-sm btn-share-bulk" id="shareDetailBtn" onclick="shareSelected('detailed')" disabled>詳細</button>
     <div class="toolbar-divider"></div>
     <button class="btn-sm btn-share" id="shareBtn" onclick="openShareModal()" disabled>打包分享</button>
+    <button class="btn-sm btn-delete-bulk" id="deleteBtn" onclick="deleteSelected()" disabled>刪除選取</button>
   </div>
 
   <!-- Order Grid -->
@@ -324,7 +330,10 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
         <button class="btn-driver-edit" onclick="editDriver(this, event)">編輯</button>
         <button class="btn-driver-del" onclick="removeDriver(this, event)">刪除</button>
       </div>
-      <button class="btn-assign-driver" {% if drivers.get(order._id | string) %}style="display:none"{% endif %} onclick="assignDriver(this, event)">＋ 指定司機</button>
+      <div class="card-footer-btns" {% if drivers.get(order._id | string) %}style="display:none"{% endif %}>
+        <button class="btn-assign-driver" onclick="assignDriver(this, event)">＋ 指定司機</button>
+        <button class="btn-no-driver" onclick="markNoDriver(this, event)">不須指定</button>
+      </div>
       <script type="application/json" class="order-data">
       {% set ns = namespace(pairs=[]) %}
       {% for field in fields %}
@@ -815,8 +824,27 @@ function updateSelCount() {
   const n = document.querySelectorAll(".order-card .card-checkbox:checked").length;
   document.getElementById("selCount").textContent = n;
   const off = n === 0;
-  ["shareBtn","copySimpleBtn","copyDetailBtn","shareSimpleBtn","shareDetailBtn"]
+  ["shareBtn","copySimpleBtn","copyDetailBtn","shareSimpleBtn","shareDetailBtn","deleteBtn"]
     .forEach(id => { document.getElementById(id).disabled = off; });
+}
+
+async function deleteSelected() {
+  const cards = [...document.querySelectorAll(".order-card .card-checkbox:checked")]
+    .map(cb => cb.closest(".order-card"));
+  if (!cards.length) return;
+  if (!confirm(`確定刪除選取的 ${cards.length} 筆訂單？`)) return;
+  const ids = cards.map(c => c.dataset.id);
+  const resp = await fetch("/api/orders/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  });
+  const data = await resp.json();
+  if (data.ok) {
+    cards.forEach(c => c.remove());
+    updateCounts();
+    updateSelCount();
+  }
 }
 
 function toggleSelectAll() {
@@ -950,16 +978,16 @@ function apiSetDriver(orderId, name) {
 
 function setCardDriver(card, name) {
   const driverDiv = card.querySelector(".card-driver");
-  const assignBtn = card.querySelector(".btn-assign-driver");
+  const footerBtns = card.querySelector(".card-footer-btns");
   if (name) {
     driverDiv.querySelector(".driver-name").textContent = name;
     driverDiv.classList.remove("hidden");
-    assignBtn.style.display = "none";
+    if (footerBtns) footerBtns.style.display = "none";
     card.classList.add("has-driver");
     card.dataset.hasDriver = "yes";
   } else {
     driverDiv.classList.add("hidden");
-    assignBtn.style.display = "";
+    if (footerBtns) footerBtns.style.display = "";
     card.classList.remove("has-driver");
     card.dataset.hasDriver = "no";
   }
@@ -967,11 +995,18 @@ function setCardDriver(card, name) {
   applyFilters();
 }
 
+function markNoDriver(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  apiSetDriver(card.dataset.id, "(不須指定)");
+  setCardDriver(card, "(不須指定)");
+}
+
 function assignDriver(btn, event) {
   event.stopPropagation();
   const card = btn.closest(".order-card");
   const name = prompt("請輸入司機姓名：");
-  if (name && name.trim()) {
+  if (name !== null && name.trim()) {
     apiSetDriver(card.dataset.id, name.trim());
     setCardDriver(card, name.trim());
   }

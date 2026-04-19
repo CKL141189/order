@@ -131,12 +131,12 @@ def order_sort_key(order):
 
 def get_date_tabs():
     today = datetime.now()
-    labels = ["今天", "明天", "後天", "第4天", "第5天", "第6天", "第7天"]
+    labels = ["昨天", "今天", "明天", "後天"]
     tabs = []
-    for i in range(7):
-        d = today + timedelta(days=i)
+    for i, label in enumerate(labels):
+        d = today + timedelta(days=i - 1)
         tabs.append({
-            "label": labels[i],
+            "label": label,
             "date_key": f"{d.month}/{d.day}",
             "display": f"{d.month}/{d.day}",
         })
@@ -221,6 +221,15 @@ def set_driver():
             conn.execute("INSERT OR REPLACE INTO drivers (order_id, name) VALUES (?, ?)", (order_id, name))
         else:
             conn.execute("DELETE FROM drivers WHERE order_id = ?", (order_id,))
+    return jsonify({"ok": True})
+
+@app.route("/api/orders/delete", methods=["POST"])
+def delete_orders():
+    ids = request.get_json(force=True).get("ids", [])
+    with get_db() as conn:
+        for oid in ids:
+            conn.execute("DELETE FROM orders WHERE id=?", (int(oid),))
+            conn.execute("DELETE FROM drivers WHERE order_id=?", (str(oid),))
     return jsonify({"ok": True})
 
 @app.route("/api/orders/<int:order_id>", methods=["POST"])
