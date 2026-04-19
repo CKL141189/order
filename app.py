@@ -106,9 +106,11 @@ def parse_b_order(order_id, text):
         return order
     # Normalize: fullwidth spaces in field names (e.g. 備　　註 → 備註)
     text = re.sub(r'備[\s\u3000]+註', '備註', text)
-    # Add space after 聯絡地址 if immediately followed by non-space (e.g. 聯絡地址1.)
-    text = re.sub(r'聯絡地址(?=\S)', '聯絡地址 ', text)
-    pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ") "
+    # Add space after fields if immediately followed by non-space/non-tab
+    text = re.sub(r'聯絡地址(?=[^\s\t])', '聯絡地址 ', text)
+    text = re.sub(r'付費方式(?=[^\s\t])', '付費方式 ', text)
+    # Support both space and tab as field separator
+    pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ")[ \t]"
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
         key = parts[i]
@@ -283,8 +285,12 @@ def failed_page():
     with get_db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT id, text, created_at, resolved FROM failed_orders ORDER BY id DESC")
-            rows = cur.fetchall()
-    items = [dict(r) for r in rows]
+            failed_rows = cur.fetchall()
+            cur.execute("SELECT id, text, created_at, resolved FROM claude_logs ORDER BY id DESC")
+            claude_rows = cur.fetchall()
+    failed_items = [{**dict(r), "type": "failed"} for r in failed_rows]
+    claude_items = [{**dict(r), "type": "claude"} for r in claude_rows]
+    items = sorted(failed_items + claude_items, key=lambda x: x["created_at"], reverse=True)
     return render_template("failed.html", items=items)
 
 @app.route("/api/claude/save", methods=["POST"])

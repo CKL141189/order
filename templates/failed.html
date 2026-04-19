@@ -29,7 +29,9 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
   background: #e74c3c; color: #fff; padding: 8px 14px;
   display: flex; align-items: center; gap: 10px; font-size: 0.85rem;
 }
+.failed-card.claude-type .failed-header { background: #8e44ad; }
 .failed-card.resolved .failed-header { background: #95a5a6; }
+.type-tag { background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 3px; font-size: 0.75rem; }
 .failed-header .created { opacity: 0.85; flex: 1; }
 .failed-header .resolved-tag { background: rgba(255,255,255,0.25); padding: 2px 8px; border-radius: 3px; font-size: 0.78rem; }
 .failed-body { padding: 12px 14px; white-space: pre-wrap; word-break: break-all; font-size: 0.85rem; color: #444; line-height: 1.7; background: #fafafa; }
@@ -60,9 +62,10 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
   {% if items %}
   <div id="itemList">
     {% for item in items %}
-    <div class="failed-card {% if item.resolved %}resolved{% endif %}" data-id="{{ item.id }}" data-resolved="{{ 'true' if item.resolved else 'false' }}">
+    <div class="failed-card {% if item.resolved %}resolved{% endif %} {% if item.type == 'claude' %}claude-type{% endif %}" data-id="{{ item.id }}" data-type="{{ item.type }}" data-resolved="{{ 'true' if item.resolved else 'false' }}">
       <div class="failed-header">
         <span class="created">{{ item.created_at }}</span>
+        {% if item.type == 'claude' %}<span class="type-tag">Claude記錄</span>{% endif %}
         {% if item.resolved %}<span class="resolved-tag">已解決</span>{% endif %}
       </div>
       <div class="failed-body">{{ item.text }}</div>
@@ -105,15 +108,19 @@ function setFilter(filter, btn) {
   });
 }
 
+function apiBase(card) {
+  return card.dataset.type === 'claude' ? '/api/claude' : '/api/failed';
+}
 function resolve(btn) {
   const card = btn.closest('.failed-card');
   const id = card.dataset.id;
-  fetch(`/api/failed/${id}/resolve`, { method: 'POST' }).then(r => r.json()).then(d => {
+  fetch(`${apiBase(card)}/${id}/resolve`, { method: 'POST' }).then(r => r.json()).then(d => {
     if (d.ok) {
       card.dataset.resolved = 'true';
       card.classList.add('resolved');
+      const typeTag = card.dataset.type === 'claude' ? '<span class="type-tag">Claude記錄</span>' : '';
       card.querySelector('.failed-header').innerHTML =
-        `<span class="created">${card.querySelector('.created').textContent}</span><span class="resolved-tag">已解決</span>`;
+        `<span class="created">${card.querySelector('.created').textContent}</span>${typeTag}<span class="resolved-tag">已解決</span>`;
       btn.remove();
       updateCounts();
       if (currentFilter === 'unresolved') card.style.display = 'none';
@@ -132,7 +139,7 @@ function copyText(btn) {
 function deleteItem(btn) {
   const card = btn.closest('.failed-card');
   const id = card.dataset.id;
-  fetch(`/api/failed/${id}/delete`, { method: 'POST' }).then(r => r.json()).then(d => {
+  fetch(`${apiBase(card)}/${id}/delete`, { method: 'POST' }).then(r => r.json()).then(d => {
     if (d.ok) { card.remove(); updateCounts(); }
   });
 }
