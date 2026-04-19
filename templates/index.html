@@ -28,6 +28,9 @@ button { padding: 10px 28px; border: none; border-radius: 6px; cursor: pointer; 
 .btn-add:disabled { background: #a8d5b5; cursor: not-allowed; }
 .btn-goto { background: #4a90e2; color: #fff; }
 .btn-goto:hover { background: #357abd; }
+.btn-claude { background: #8e44ad; color: #fff; }
+.btn-claude:hover { background: #7d3c98; }
+.btn-claude:disabled { background: #c9a9d9; cursor: not-allowed; }
 
 .result-msg { margin-top: 14px; font-size: 0.95rem; font-weight: bold; }
 .result-msg.success { color: #27ae60; }
@@ -53,6 +56,7 @@ button { padding: 10px 28px; border: none; border-radius: 6px; cursor: pointer; 
       <a href="/orders" class="btn-nav blue">訂單列表 →</a>
       <a href="/stats" class="btn-nav green">統計</a>
       <a href="/failed" class="btn-nav" style="background:#e74c3c;">失敗記錄</a>
+      <button class="btn-nav btn-claude" id="claudeBtn" onclick="sendToClaude()">傳給 Claude 修復</button>
     </div>
   </div>
 
@@ -136,6 +140,23 @@ async function addOrders() {
     });
     document.getElementById('failedSection').style.display = '';
   }
+}
+async function sendToClaude() {
+  const btn = document.getElementById('claudeBtn');
+  btn.disabled = true; btn.textContent = '讀取中…';
+  const resp = await fetch('/api/failed/unresolved');
+  const items = await resp.json();
+  btn.disabled = false; btn.textContent = '傳給 Claude 修復';
+  if (!items.length) {
+    alert('目前沒有未解決的解析失敗記錄。');
+    return;
+  }
+  const text = `以下 ${items.length} 筆訂單無法解析，請幫我修復 parser：\n\n` +
+    items.map((item, i) => `【第${i+1}筆】${item.created_at}\n${item.text}`).join('\n\n---\n\n');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = `已複製 ${items.length} 筆 ✓`;
+    setTimeout(() => btn.textContent = '傳給 Claude 修復', 2500);
+  });
 }
 </script>
 </body>

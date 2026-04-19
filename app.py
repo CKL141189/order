@@ -130,26 +130,30 @@ def parse_orders(raw_text):
         elif blocks:
             blocks[-1][1].append(line)
 
+    def _is_sufficient(order):
+        return any(k in order for k in ("預約日期", "預約時間", "服務項目", "乘客姓名"))
+
     orders = []
     failed = []
     for fmt, block_lines in blocks:
+        raw = "\n".join(block_lines)
         if fmt == "K":
             order = parse_order("".join(block_lines))
-            if order:
+            if order and _is_sufficient(order):
                 orders.append(order)
             else:
-                failed.append("\n".join(block_lines))
+                failed.append(raw)
         else:
             text = " ".join(block_lines)
             m = re.match(r'^([BbKk]\d{10,})\s*(.*)', text, re.DOTALL)
             if m:
                 order = parse_b_order(m.group(1), m.group(2).strip())
-                if order:
+                if order and _is_sufficient(order):
                     orders.append(order)
                 else:
-                    failed.append("\n".join(block_lines))
+                    failed.append(raw)
             else:
-                failed.append("\n".join(block_lines))
+                failed.append(raw)
     return orders, failed
 
 def order_sort_key(order):
@@ -273,6 +277,14 @@ def failed_page():
             rows = cur.fetchall()
     items = [dict(r) for r in rows]
     return render_template("failed.html", items=items)
+
+@app.route("/api/failed/unresolved", methods=["GET"])
+def get_unresolved_failed():
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, text, created_at FROM failed_orders WHERE resolved=FALSE ORDER BY id DESC")
+            rows = cur.fetchall()
+    return jsonify([dict(r) for r in rows])
 
 @app.route("/api/failed/<int:fid>/resolve", methods=["POST"])
 def resolve_failed(fid):
