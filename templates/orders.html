@@ -547,6 +547,18 @@ function truncateAddr(addr) {
   return result || addr.trim();
 }
 
+function truncateSeq(addr) {
+  if (!addr) return "";
+  // Split on numbered stops like 1. 2. 3. etc, truncate each stop individually
+  const stops = addr.split(/(?=\d+[.)、．])/).filter(Boolean);
+  if (stops.length <= 1) return truncateAddr(addr);
+  return stops.map(s => {
+    const m = s.match(/^(\d+[.)、．]\s*)([\s\S]*)/);
+    if (!m) return truncateAddr(s);
+    return m[1] + truncateAddr(m[2]);
+  }).join(" ");
+}
+
 function generateSimpleParts(data) {
   const time    = formatTime24(data["預約時間"] || "");
   const service = data["服務項目"] || "";
@@ -558,9 +570,11 @@ function generateSimpleParts(data) {
   const extraAddr = truncateAddr(rawExtra);
 
   // Collect all address fields in order, combine non-empty ones
-  const addrParts = ["接送地址", "接送順序", "連繫地址"]
-    .map(f => truncateAddr(data[f] || ""))
-    .filter(Boolean);
+  const addrParts = [
+    truncateAddr(data["接送地址"] || ""),
+    truncateSeq(data["接送順序"] || ""),
+    truncateAddr(data["連繫地址"] || ""),
+  ].filter(Boolean);
   // Deduplicate: skip if already contained in previous part
   const dedupedParts = [];
   addrParts.forEach(p => {
