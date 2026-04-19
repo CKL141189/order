@@ -878,6 +878,15 @@ function saveNote(textarea) {
 
 const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","接送地址","接送順序","連繫地址","加點地址","付費方式","備註"];
 
+function getCardDateKey(card) {
+  if (currentSort === "created") {
+    const created = card.dataset.created || "";
+    const m = created.match(/\d{4}\/(\d+)\/(\d+)/);
+    return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : "";
+  }
+  return card.dataset.tab;
+}
+
 // ── Combined filter apply ──
 function applyFilters() {
   const searchTerm = (document.getElementById("searchInput").value || "").trim().toLowerCase();
@@ -886,11 +895,11 @@ function applyFilters() {
     if (currentTab === "all") {
       tabMatch = true;
     } else if (currentTab === "custom") {
-      const n = dateToNum(card.dataset.date);
+      const n = dateToNum(getCardDateKey(card));
       const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
       tabMatch = n !== null && (!f || n >= f) && (!t || n <= t);
     } else {
-      tabMatch = card.dataset.tab === currentTab;
+      tabMatch = getCardDateKey(card) === currentTab;
     }
     const driverMatch = currentDriverFilter === "all" ||
       (currentDriverFilter === "assigned" && card.dataset.hasDriver === "yes") ||
@@ -935,19 +944,19 @@ function updateCounts() {
   document.getElementById("cnt-all").textContent = `(${all.length})`;
   document.querySelectorAll(".date-tab-btn[data-tab]").forEach(btn => {
     const tab = btn.dataset.tab;
-    if (tab === "all") return;
-    const n = document.querySelectorAll(`.order-card[data-tab="${tab}"]`).length;
+    if (tab === "all" || tab === "custom") return;
+    const n = Array.from(all).filter(c => getCardDateKey(c) === tab).length;
     const sp = btn.querySelector(".tab-count");
     if (sp) sp.textContent = n ? `(${n})` : "";
   });
   const tabCards = Array.from(all).filter(card => {
     if (currentTab === "all") return true;
     if (currentTab === "custom") {
-      const n = dateToNum(card.dataset.date);
+      const n = dateToNum(getCardDateKey(card));
       const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
       return n !== null && (!f || n >= f) && (!t || n <= t);
     }
-    return card.dataset.tab === currentTab;
+    return getCardDateKey(card) === currentTab;
   });
   const assignedCount = tabCards.filter(c => c.dataset.hasDriver === "yes").length;
   const unassignedCount = tabCards.filter(c => c.dataset.hasDriver === "no").length;
@@ -1218,6 +1227,7 @@ function switchSort(sort, btn) {
   document.querySelectorAll(".btn-view.btn-sort-opt").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   applySort();
+  applyFilters();
 }
 
 // Init
