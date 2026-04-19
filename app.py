@@ -55,13 +55,15 @@ init_db()
 
 def parse_order(text):
     order = {}
-    pattern = "(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")："
+    # Support both ： (fullwidth colon) and 1–3 spaces as field separator
+    pattern = "(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")(?:：|[ \t]{1,3})"
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
         key = parts[i]
         canonical = FIELD_ALIASES.get(key, key)
         value = parts[i + 1].strip().replace("訂單訊息", "").strip()
-        order[canonical] = value
+        if value:
+            order[canonical] = value
     return order if order else None
 
 def parse_b_order(order_id, text):
@@ -83,11 +85,14 @@ def parse_orders(raw_text):
     lines = [line.strip() for line in raw_text.strip().splitlines()
              if line.strip() and line.strip() != "訂單訊息"]
 
+    def _is_k_start(line):
+        return "訂單號碼：" in line or bool(re.search(r'訂單號碼[ \t]+\S', line))
+
     blocks = []  # each entry: [fmt, lines_list]
     for line in lines:
-        if "訂單號碼：" in line:
+        if _is_k_start(line):
             blocks.append(["K", [line]])
-        elif re.match(r'^[BbKk]\d{10,}(\s|$)', line) and "訂單號碼：" not in line:
+        elif re.match(r'^[BbKk]\d{10,}(\s|$)', line) and not _is_k_start(line):
             blocks.append(["B", [line]])
         elif blocks:
             blocks[-1][1].append(line)
