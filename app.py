@@ -106,11 +106,11 @@ def parse_b_order(order_id, text):
         return order
     # Normalize: fullwidth spaces in field names (e.g. 備　　註 → 備註)
     text = re.sub(r'備[\s\u3000]+註', '備註', text)
-    # Add space after fields if immediately followed by non-space/non-tab
-    text = re.sub(r'聯絡地址(?=[^\s\t])', '聯絡地址 ', text)
-    text = re.sub(r'付費方式(?=[^\s\t])', '付費方式 ', text)
-    # Support both space and tab as field separator
-    pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ")[ \t]"
+    # Ensure every B-format field name is followed by a space (handles missing/tab separators)
+    for field in B_FORMAT_FIELDS:
+        text = re.sub(re.escape(field) + r'(?=[^\s\t])', field + ' ', text)
+        text = text.replace(field + '\t', field + ' ')
+    pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ") "
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
         key = parts[i]
