@@ -743,7 +743,7 @@ function generateSimpleParts(data) {
 
   // Collect all address fields in order, combine non-empty ones
   const addrParts = [
-    truncateAddr(data["接送地址"] || ""),
+    truncateSeq(data["接送地址"] || ""),
     truncateSeq(data["接送順序"] || ""),
     truncateAddr(data["連繫地址"] || ""),
   ].filter(Boolean);
