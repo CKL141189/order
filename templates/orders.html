@@ -402,7 +402,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     {% for order in orders %}
     {% set service = order.get("服務項目", "") %}
     {% set _note = order.get('備註', '') %}{% set _has_inv = '統一發票' in _note or '統編' in _note or '統一編號' in _note or '發票' in _note %}
-    {% set _car = order.get('接送車型', '') | lower %}{% set _has_lux = 'lm' in _car or '阿法' in _car or 'alphard' in _car %}
+    {% set _car = order.get('接送車型', '') | lower %}{% set _note_lux = order.get('備註', '') | lower %}{% set _has_lux = 'lm' in _car or '阿法' in _car or 'alphard' in _car or 'lm' in _note_lux or '阿法' in _note_lux or 'alphard' in _note_lux %}
     {% set _svc = order.get('服務項目', '') %}{% set _has_svc = '單程' in _svc or '包車' in _svc %}
     <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-has-luxury="{{ 'yes' if _has_lux else 'no' }}" data-has-special-svc="{{ 'yes' if _has_svc else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
       <div class="card-header">
