@@ -70,6 +70,9 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .btn-share { background: #27ae60; color: #fff; }
 .btn-share:hover { background: #1e8449; }
 .btn-share:disabled { background: #a8d5b5; cursor: not-allowed; }
+.btn-assign-bulk { background: #e67e22; color: #fff; }
+.btn-assign-bulk:hover:not(:disabled) { background: #cf6d17; }
+.btn-assign-bulk:disabled { background: #f0c090; cursor: not-allowed; }
 .btn-copy-bulk { background: #4a90e2; color: #fff; }
 .btn-copy-bulk:hover:not(:disabled) { background: #357abd; }
 .btn-copy-bulk:disabled { background: #b0c8e8; cursor: not-allowed; }
@@ -412,7 +415,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     <button class="btn-sm btn-share-bulk" id="shareSimpleBtn" onclick="shareSelected('simple')" disabled>簡易</button>
     <button class="btn-sm btn-share-bulk" id="shareDetailBtn" onclick="shareSelected('detailed')" disabled>詳細</button>
     <div class="toolbar-divider"></div>
-    <button class="btn-sm btn-share" id="shareBtn" onclick="openShareModal()" disabled>打包分享</button>
+    <button class="btn-sm btn-assign-bulk" id="assignBulkBtn" onclick="assignDriverBulk()" disabled>指定司機</button>
     <button class="btn-sm btn-delete-bulk" id="deleteBtn" onclick="deleteSelected()" disabled>刪除選取</button>
   </div>
 
@@ -1105,7 +1108,7 @@ function updateSelCount() {
   const n = document.querySelectorAll(".order-card .card-checkbox:checked").length;
   document.getElementById("selCount").textContent = n;
   const off = n === 0;
-  ["shareBtn","copySimpleBtn","copyDetailBtn","shareSimpleBtn","shareDetailBtn","deleteBtn"]
+  ["assignBulkBtn","copySimpleBtn","copyDetailBtn","shareSimpleBtn","shareDetailBtn","deleteBtn"]
     .forEach(id => { document.getElementById(id).disabled = off; });
 }
 
@@ -1281,6 +1284,18 @@ function markNoDriver(btn, event) {
   const card = btn.closest(".order-card");
   apiSetDriver(card.dataset.id, "(不須指定)");
   setCardDriver(card, "(不須指定)");
+}
+
+async function assignDriverBulk() {
+  const cards = [...document.querySelectorAll(".order-card .card-checkbox:checked")]
+    .map(cb => cb.closest(".order-card"));
+  if (!cards.length) return;
+  const name = prompt(`請輸入司機姓名（將指定給 ${cards.length} 筆訂單）：`);
+  if (!name || !name.trim()) return;
+  const driverName = name.trim();
+  await Promise.all(cards.map(card => apiSetDriver(card.dataset.id, driverName)));
+  cards.forEach(card => setCardDriver(card, driverName));
+  updateCounts();
 }
 
 function assignDriver(btn, event) {
