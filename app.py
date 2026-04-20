@@ -354,15 +354,10 @@ def delete_failed(fid):
 def api_add_orders():
     new_orders = request.get_json(force=True).get("orders", [])
     existing = load_orders()
-    existing_map = {o.get("訂單號碼"): i for i, o in enumerate(existing)}
     now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
     for o in new_orders:
-        no = o.get("訂單號碼")
-        if no and no in existing_map:
-            existing[existing_map[no]].update({k: v for k, v in o.items() if not k.startswith("_")})
-        else:
-            o.setdefault("created_at", now_str)
-            existing.append(o)
+        o.setdefault("created_at", now_str)
+        existing.append(o)
     existing.sort(key=order_sort_key)
     save_orders(existing)
     return jsonify({"ok": True})
