@@ -38,8 +38,10 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .tab-btn.active .sub-inv, .tab-btn.active .sub-lux, .tab-btn.active .sub-svc { color: rgba(255,255,255,0.9); }
 
 /* View Toggle */
-.view-toggle-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+.view-toggle-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
 .view-toggle-bar span { font-size: 0.85rem; color: #888; margin-right: 4px; }
+.toggle-group { display: flex; align-items: center; gap: 8px; }
+.toggle-group-sep { width: 1px; background: #ddd; height: 20px; margin: 0 4px; flex-shrink: 0; }
 .btn-view {
   padding: 6px 18px; border: 2px solid #ddd; border-radius: 20px;
   background: #fff; cursor: pointer; font-size: 0.88rem; font-family: inherit; transition: all 0.15s;
@@ -282,8 +284,9 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   .tabs-bar { gap: 5px; }
   .tab-btn { padding: 6px 10px; font-size: 0.82rem; }
 
-  /* Sort/View toggles: wrap to 2 rows */
-  .view-toggle-bar { flex-wrap: wrap; gap: 5px; }
+  /* Sort/View toggles: stack to 2 rows on mobile */
+  .view-toggle-bar { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .toggle-group-sep { display: none; }
   .btn-view { padding: 5px 10px; font-size: 0.82rem; }
 
   /* Search */
@@ -316,13 +319,17 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   {% if orders %}
   <!-- Sort + View Toggle -->
   <div class="view-toggle-bar">
-    <span>排序：</span>
-    <button class="btn-view btn-sort-opt active" onclick="switchSort('date', this)">依預約日期</button>
-    <button class="btn-view btn-sort-opt" onclick="switchSort('created', this)">依建立時間</button>
-    <div style="width:1px;background:#ddd;height:20px;margin:0 6px;flex-shrink:0;"></div>
-    <span>顯示：</span>
-    <button class="btn-view active" data-view="detailed" onclick="switchView('detailed', this)">詳細訂單</button>
-    <button class="btn-view" data-view="simple" onclick="switchView('simple', this)">簡易訂單</button>
+    <div class="toggle-group">
+      <span>排序：</span>
+      <button class="btn-view btn-sort-opt active" onclick="switchSort('date', this)">依預約日期</button>
+      <button class="btn-view btn-sort-opt" onclick="switchSort('created', this)">依建立時間</button>
+    </div>
+    <div class="toggle-group-sep"></div>
+    <div class="toggle-group">
+      <span>顯示：</span>
+      <button class="btn-view active" data-view="detailed" onclick="switchView('detailed', this)">詳細訂單</button>
+      <button class="btn-view" data-view="simple" onclick="switchView('simple', this)">簡易訂單</button>
+    </div>
   </div>
 
   <!-- Date Tabs -->
@@ -367,7 +374,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     </div>
   </div>
 
-  <!-- Driver + Invoice Filter -->
+  <!-- Driver Filter -->
   <div class="tabs-bar" id="driverFilterBar">
     <button class="tab-btn driver-filter-btn active" data-driver-filter="all" onclick="switchDriverFilter('all', this)">全部司機</button>
     <button class="tab-btn driver-filter-btn" data-driver-filter="assigned" onclick="switchDriverFilter('assigned', this)">
@@ -376,7 +383,9 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     <button class="tab-btn driver-filter-btn" data-driver-filter="unassigned" onclick="switchDriverFilter('unassigned', this)">
       未指定司機 <span class="tab-count" id="cnt-unassigned"></span>
     </button>
-    <div style="width:1px;background:#ddd;flex-shrink:0;"></div>
+  </div>
+  <!-- Special Filters -->
+  <div class="tabs-bar" id="specialFilterBar">
     <button class="tab-btn" id="invoiceFilterBtn" onclick="toggleInvoiceFilter(this)" style="border-color:#e67e22;color:#e67e22;">
       需要發票 <span class="tab-count" id="cnt-invoice"></span>
     </button>
