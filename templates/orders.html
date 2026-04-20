@@ -738,15 +738,13 @@ function generateSimpleParts(data) {
   const carType = data["接送車型"] || "";
   const payment = data["付費方式"] || "";
   const notes   = data["備註"] || "";
-  const rawExtra = data["加點地址"] || "";
-  const extraAddr = truncateAddr(rawExtra);
-
   // Collect all address fields in order, combine non-empty ones
   const addrParts = [
     truncateSeq(data["出發地址"] || ""),
     truncateSeq(data["接送地址"] || ""),
     truncateSeq(data["接送順序"] || ""),
     truncateAddr(data["連繫地址"] || ""),
+    truncateAddr(data["加點地址"] || ""),
     truncateAddr(data["抵達地址"] || ""),
   ].filter(Boolean);
   // Deduplicate: skip if already contained in previous part
@@ -773,8 +771,7 @@ function generateSimpleParts(data) {
   const paymentAmount = payment.replace(/下車付現|匯款預付|匯款/g, '').trim();
   const line2 = [paymentAmount, carType].filter(Boolean).join("  ");
   const line3Parts = [];
-  if (notes && (notes.includes("安全椅") || notes.includes("座椅") || notes.includes("加點"))) line3Parts.push(notes);
-  if (extraAddr) line3Parts.push("加點：" + extraAddr);
+  if (notes && (notes.includes("安全椅") || notes.includes("座椅"))) line3Parts.push(notes);
   const line3 = line3Parts.join("  ");
   return { line1, line2, line3 };
 }
