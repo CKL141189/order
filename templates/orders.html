@@ -119,7 +119,8 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .order-card.selected { box-shadow: 0 0 0 3px #4a90e2; }
 .order-card.hidden { display: none; }
 
-.card-checkbox { width: 17px; height: 17px; accent-color: #fff; cursor: pointer; flex-shrink: 0; margin-right: 8px; }
+.card-checkbox { width: 17px; height: 17px; accent-color: #4a90e2; cursor: pointer; flex-shrink: 0; margin-right: 8px; }
+.card-header .card-checkbox { accent-color: #fff; }
 .card-header { background: #4a90e2; color: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
 .card-header-main { display: flex; align-items: center; width: 100%; }
 .card-header-actions { display: flex; gap: 6px; justify-content: flex-end; }
@@ -366,14 +367,6 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     </div>
   </div>
 
-  <!-- Search -->
-  <div class="search-bar">
-    <div class="search-input-wrap">
-      <input type="text" id="searchInput" placeholder="搜尋訂單號碼或電話…" oninput="applyFilters()">
-      <button class="btn-search-clear" onclick="clearSearch()">✕</button>
-    </div>
-  </div>
-
   <!-- Driver Filter -->
   <div class="tabs-bar" id="driverFilterBar">
     <button class="tab-btn driver-filter-btn active" data-driver-filter="all" onclick="switchDriverFilter('all', this)">全部司機</button>
@@ -395,6 +388,14 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     <button class="tab-btn" id="svcFilterBtn" onclick="toggleSvcFilter(this)" style="border-color:#27ae60;color:#27ae60;">
       單程/包車 <span class="tab-count" id="cnt-svc"></span>
     </button>
+  </div>
+
+  <!-- Search -->
+  <div class="search-bar">
+    <div class="search-input-wrap">
+      <input type="text" id="searchInput" placeholder="搜尋訂單號碼或電話…" oninput="applyFilters()">
+      <button class="btn-search-clear" onclick="clearSearch()">✕</button>
+    </div>
   </div>
 
   <!-- Toolbar -->
