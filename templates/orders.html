@@ -30,6 +30,12 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .tab-btn:hover { border-color: #4a90e2; color: #4a90e2; }
 .tab-btn.active { background: #4a90e2; border-color: #4a90e2; color: #fff; font-weight: bold; }
 .tab-count { font-size: 0.78rem; opacity: 0.85; margin-left: 4px; }
+.tab-btn.date-tab-btn { display: flex; flex-direction: column; align-items: center; white-space: normal; padding: 6px 12px; text-align: center; }
+.tab-sub { font-size: 0.62rem; display: flex; gap: 4px; margin-top: 2px; min-height: 0.85em; }
+.sub-inv { color: #e67e22; font-weight: bold; }
+.sub-lux { color: #8e44ad; font-weight: bold; }
+.sub-svc { color: #27ae60; font-weight: bold; }
+.tab-btn.active .sub-inv, .tab-btn.active .sub-lux, .tab-btn.active .sub-svc { color: rgba(255,255,255,0.9); }
 
 /* View Toggle */
 .view-toggle-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
@@ -138,15 +144,19 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .cal-title { font-weight: bold; font-size: 0.95rem; color: #2c3e50; min-width: 100px; text-align: center; }
 .cal-weekdays, .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; width: 100%; }
 .cal-weekdays span { font-size: 0.75rem; color: #999; text-align: center; padding: 3px 0; }
-.cal-day { width: 100%; height: 40px; border: none; background: #f5f5f5; border-radius: 4px; cursor: pointer; font-size: 0.83rem; font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.cal-day { width: 100%; height: 56px; border: none; background: #f5f5f5; border-radius: 4px; cursor: pointer; font-size: 0.83rem; font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 2px 0; }
 .cal-day:hover:not(.empty) { background: #d0e4f7; }
 .cal-day.empty { background: transparent; cursor: default; }
 .cal-day.today { border: 2px solid #4a90e2; font-weight: bold; }
 .cal-day.sel-start, .cal-day.sel-end { background: #4a90e2; color: #fff; font-weight: bold; }
 .cal-day.in-range { background: #cce0f5; }
-.cal-count { font-size: 0.6rem; color: #4a90e2; line-height: 1; }
+.cal-count { font-size: 0.6rem; color: #4a90e2; line-height: 1.2; }
 .cal-day.sel-start .cal-count, .cal-day.sel-end .cal-count { color: rgba(255,255,255,0.85); }
 .cal-day.in-range .cal-count { color: #4a90e2; }
+.cal-sub { font-size: 0.55rem; display: flex; gap: 2px; justify-content: center; line-height: 1.2; min-height: 0.75em; }
+.cal-day.sel-start .cal-sub .sub-inv, .cal-day.sel-end .cal-sub .sub-inv,
+.cal-day.sel-start .cal-sub .sub-lux, .cal-day.sel-end .cal-sub .sub-lux,
+.cal-day.sel-start .cal-sub .sub-svc, .cal-day.sel-end .cal-sub .sub-svc { color: rgba(255,255,255,0.85); }
 .cal-range-info { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 0.85rem; color: #555; }
 .btn-range-clear { background: #e0e0e0; color: #555; padding: 4px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-family: inherit; }
 .btn-range-clear:hover { background: #c8c8c8; }
@@ -288,7 +298,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   .order-grid { grid-template-columns: 1fr; gap: 10px; }
 
   /* Calendar */
-  .cal-day { height: 42px; font-size: 0.8rem; }
+  .cal-day { height: 58px; font-size: 0.8rem; }
 }
 </style>
 </head>
@@ -321,11 +331,13 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   <!-- Date Tabs -->
   <div class="tabs-bar" id="tabsBar">
     <button class="tab-btn date-tab-btn active" data-tab="all" onclick="switchTab('all', this)">
-      全部 <span class="tab-count" id="cnt-all"></span>
+      <span>全部 <span class="tab-count" id="cnt-all"></span></span>
+      <span class="tab-sub" id="tsub-all"></span>
     </button>
     {% for tab in date_tabs %}
     <button class="tab-btn date-tab-btn" data-tab="{{ tab.date_key }}" onclick="switchTab('{{ tab.date_key }}', this)">
-      {{ tab.label }} {{ tab.display }} <span class="tab-count" id="cnt-{{ loop.index }}"></span>
+      <span>{{ tab.label }} {{ tab.display }} <span class="tab-count" id="cnt-{{ loop.index }}"></span></span>
+      <span class="tab-sub" id="tsub-{{ loop.index }}"></span>
     </button>
     {% endfor %}
     <button class="tab-btn date-tab-btn" data-tab="custom" onclick="switchTab('custom', this)">
@@ -517,8 +529,8 @@ let calMonth = new Date().getMonth() + 1;
 let calRangeStart = null;
 let calRangeEnd = null;
 
-function buildDateCountMap() {
-  const map = {};
+function buildDateCountMaps() {
+  const total = {}, inv = {}, lux = {}, svc = {};
   document.querySelectorAll(".order-card").forEach(card => {
     let n;
     if (currentSort === "created") {
@@ -528,9 +540,21 @@ function buildDateCountMap() {
     } else {
       n = dateToNum(card.dataset.date);
     }
-    if (n !== null) map[n] = (map[n] || 0) + 1;
+    if (n === null) return;
+    total[n] = (total[n] || 0) + 1;
+    if (card.dataset.hasInvoice === "yes") inv[n] = (inv[n] || 0) + 1;
+    if (card.dataset.hasLuxury === "yes") lux[n] = (lux[n] || 0) + 1;
+    if (card.dataset.hasSpecialSvc === "yes") svc[n] = (svc[n] || 0) + 1;
   });
-  return map;
+  return { total, inv, lux, svc };
+}
+
+function makeSubHtml(i, l, s) {
+  const parts = [];
+  if (i) parts.push(`<span class="sub-inv">票${i}</span>`);
+  if (l) parts.push(`<span class="sub-lux">車${l}</span>`);
+  if (s) parts.push(`<span class="sub-svc">單${s}</span>`);
+  return parts.join("");
 }
 
 function renderCalendar() {
@@ -540,7 +564,7 @@ function renderCalendar() {
   const totalDays = new Date(y, m, 0).getDate();
   const today = new Date();
   const grid = document.getElementById("calGrid");
-  const dateCountMap = buildDateCountMap();
+  const { total: dateCountMap, inv: invMap, lux: luxMap, svc: svcMap } = buildDateCountMaps();
   grid.innerHTML = "";
   for (let i = 0; i < firstDow; i++) {
     const el = document.createElement("div"); el.className = "cal-day empty"; grid.appendChild(el);
@@ -548,8 +572,13 @@ function renderCalendar() {
   for (let d = 1; d <= totalDays; d++) {
     const btn = document.createElement("button");
     btn.className = "cal-day";
-    const cnt = dateCountMap[m * 100 + d] || 0;
-    btn.innerHTML = `<span>${d}</span>${cnt ? `<span class="cal-count">${cnt}</span>` : `<span class="cal-count" style="opacity:0">0</span>`}`;
+    const key = m * 100 + d;
+    const cnt = dateCountMap[key] || 0;
+    const invC = invMap[key] || 0, luxC = luxMap[key] || 0, svcC = svcMap[key] || 0;
+    const subHtml = makeSubHtml(invC, luxC, svcC);
+    btn.innerHTML = `<span>${d}</span>` +
+      `<span class="cal-count"${!cnt ? ' style="opacity:0"' : ''}>${cnt || ''}</span>` +
+      `<span class="cal-sub"${!subHtml ? ' style="visibility:hidden"' : ''}>${subHtml || '&nbsp;'}</span>`;
     if (y === today.getFullYear() && m === today.getMonth() + 1 && d === today.getDate())
       btn.classList.add("today");
     const n = y * 10000 + m * 100 + d;
@@ -1001,13 +1030,26 @@ function toggleSvcFilter(btn) {
 
 function updateCounts() {
   const all = document.querySelectorAll(".order-card");
+  // "全部" tab sub-counts
+  const allInv = Array.from(all).filter(c => c.dataset.hasInvoice === "yes").length;
+  const allLux = Array.from(all).filter(c => c.dataset.hasLuxury === "yes").length;
+  const allSvc = Array.from(all).filter(c => c.dataset.hasSpecialSvc === "yes").length;
   document.getElementById("cnt-all").textContent = `(${all.length})`;
+  const tsubAll = document.getElementById("tsub-all");
+  if (tsubAll) tsubAll.innerHTML = makeSubHtml(allInv, allLux, allSvc);
   document.querySelectorAll(".date-tab-btn[data-tab]").forEach(btn => {
     const tab = btn.dataset.tab;
     if (tab === "all" || tab === "custom") return;
-    const n = Array.from(all).filter(c => getCardDateKey(c) === tab).length;
+    const cards = Array.from(all).filter(c => getCardDateKey(c) === tab);
+    const n = cards.length;
     const sp = btn.querySelector(".tab-count");
     if (sp) sp.textContent = n ? `(${n})` : "";
+    const subEl = btn.querySelector(".tab-sub");
+    if (subEl) subEl.innerHTML = makeSubHtml(
+      cards.filter(c => c.dataset.hasInvoice === "yes").length,
+      cards.filter(c => c.dataset.hasLuxury === "yes").length,
+      cards.filter(c => c.dataset.hasSpecialSvc === "yes").length
+    );
   });
   const tabCards = Array.from(all).filter(card => {
     if (currentTab === "all") return true;
