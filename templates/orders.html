@@ -371,6 +371,12 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     <button class="tab-btn" id="invoiceFilterBtn" onclick="toggleInvoiceFilter(this)" style="border-color:#e67e22;color:#e67e22;">
       需要發票 <span class="tab-count" id="cnt-invoice"></span>
     </button>
+    <button class="tab-btn" id="luxuryFilterBtn" onclick="toggleLuxuryFilter(this)" style="border-color:#8e44ad;color:#8e44ad;">
+      LM/Alphard <span class="tab-count" id="cnt-luxury"></span>
+    </button>
+    <button class="tab-btn" id="svcFilterBtn" onclick="toggleSvcFilter(this)" style="border-color:#27ae60;color:#27ae60;">
+      單程/包車 <span class="tab-count" id="cnt-svc"></span>
+    </button>
   </div>
 
   <!-- Toolbar -->
@@ -396,7 +402,9 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     {% for order in orders %}
     {% set service = order.get("服務項目", "") %}
     {% set _note = order.get('備註', '') %}{% set _has_inv = '統一發票' in _note or '統編' in _note or '統一編號' in _note or '發票' in _note %}
-    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
+    {% set _car = order.get('接送車型', '') | lower %}{% set _has_lux = 'lm' in _car or '阿法' in _car or 'alphard' in _car %}
+    {% set _svc = order.get('服務項目', '') %}{% set _has_svc = '單程' in _svc or '包車' in _svc %}
+    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-has-luxury="{{ 'yes' if _has_lux else 'no' }}" data-has-special-svc="{{ 'yes' if _has_svc else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
       <div class="card-header">
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
@@ -492,6 +500,8 @@ let currentTab = "all";
 let currentDriverFilter = "all";
 let currentView = "detailed";
 let currentInvoiceFilter = false;
+let currentLuxuryFilter = false;
+let currentSvcFilter = false;
 let dateRangeFrom = null;
 let dateRangeTo = null;
 
@@ -928,8 +938,10 @@ function applyFilters() {
       (currentDriverFilter === "assigned" && card.dataset.hasDriver === "yes") ||
       (currentDriverFilter === "unassigned" && card.dataset.hasDriver === "no");
     const invoiceMatch = !currentInvoiceFilter || card.dataset.hasInvoice === "yes";
+    const luxuryMatch = !currentLuxuryFilter || card.dataset.hasLuxury === "yes";
+    const svcMatch = !currentSvcFilter || card.dataset.hasSpecialSvc === "yes";
     const searchMatch = !searchTerm || card.dataset.search.toLowerCase().includes(searchTerm);
-    card.classList.toggle("hidden", !(tabMatch && driverMatch && invoiceMatch && searchMatch));
+    card.classList.toggle("hidden", !(tabMatch && driverMatch && invoiceMatch && luxuryMatch && svcMatch && searchMatch));
   });
   updateSelCount();
   updateCounts();
@@ -971,6 +983,22 @@ function toggleInvoiceFilter(btn) {
   applyFilters();
 }
 
+function toggleLuxuryFilter(btn) {
+  currentLuxuryFilter = !currentLuxuryFilter;
+  btn.style.background = currentLuxuryFilter ? "#8e44ad" : "";
+  btn.style.color = currentLuxuryFilter ? "#fff" : "#8e44ad";
+  btn.style.borderColor = "#8e44ad";
+  applyFilters();
+}
+
+function toggleSvcFilter(btn) {
+  currentSvcFilter = !currentSvcFilter;
+  btn.style.background = currentSvcFilter ? "#27ae60" : "";
+  btn.style.color = currentSvcFilter ? "#fff" : "#27ae60";
+  btn.style.borderColor = "#27ae60";
+  applyFilters();
+}
+
 function updateCounts() {
   const all = document.querySelectorAll(".order-card");
   document.getElementById("cnt-all").textContent = `(${all.length})`;
@@ -993,12 +1021,18 @@ function updateCounts() {
   const assignedCount = tabCards.filter(c => c.dataset.hasDriver === "yes").length;
   const unassignedCount = tabCards.filter(c => c.dataset.hasDriver === "no").length;
   const invoiceCount = tabCards.filter(c => c.dataset.hasInvoice === "yes").length;
+  const luxuryCount = tabCards.filter(c => c.dataset.hasLuxury === "yes").length;
+  const svcCount = tabCards.filter(c => c.dataset.hasSpecialSvc === "yes").length;
   const cntAssigned = document.getElementById("cnt-assigned");
   const cntUnassigned = document.getElementById("cnt-unassigned");
-  const cntInvoice = document.getElementById("cnt-invoice");
   if (cntAssigned) cntAssigned.textContent = assignedCount ? `(${assignedCount})` : "";
   if (cntUnassigned) cntUnassigned.textContent = unassignedCount ? `(${unassignedCount})` : "";
+  const cntInvoice = document.getElementById("cnt-invoice");
   if (cntInvoice) cntInvoice.textContent = invoiceCount ? `(${invoiceCount})` : "";
+  const cntLux = document.getElementById("cnt-luxury");
+  if (cntLux) cntLux.textContent = luxuryCount ? `(${luxuryCount})` : "";
+  const cntSvc = document.getElementById("cnt-svc");
+  if (cntSvc) cntSvc.textContent = svcCount ? `(${svcCount})` : "";
 }
 
 function toggleCard(card, event) {
