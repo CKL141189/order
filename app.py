@@ -23,6 +23,7 @@ FIELD_ALIASES = {
     "聯繫地址": "連繫地址",
     "接送地點": "接送順序",
     "訂單編號": "訂單號碼",
+    "先到地址": "連繫地址",
 }
 
 # B-format orders use space-separated key value (no colon)
