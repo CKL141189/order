@@ -125,7 +125,7 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 
 .card-checkbox { width: 17px; height: 17px; accent-color: #4a90e2; cursor: pointer; flex-shrink: 0; }
 .card-header .card-checkbox { accent-color: #e74c3c; }
-.card-header { background: #4a90e2; color: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; }
+.card-header { background: #4a90e2; color: #fff; padding: 8px 14px; display: flex; flex-direction: column; gap: 3px; }
 .card-header-main { display: flex; align-items: center; width: 100%; gap: 4px; }
 .card-header-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
 .card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; overflow: hidden; }
@@ -1061,13 +1061,6 @@ function toggleSvcFilter(btn) {
 
 function updateCounts() {
   const all = document.querySelectorAll(".order-card");
-  // "全部" tab sub-counts
-  const allInv = Array.from(all).filter(c => c.dataset.hasInvoice === "yes").length;
-  const allLux = Array.from(all).filter(c => c.dataset.hasLuxury === "yes").length;
-  const allSvc = Array.from(all).filter(c => c.dataset.hasSpecialSvc === "yes").length;
-  document.getElementById("cnt-all").textContent = `(${all.length})`;
-  const tsubAll = document.getElementById("tsub-all");
-  if (tsubAll) tsubAll.innerHTML = makeSubHtml(allInv, allLux, allSvc);
   // Custom range sub-counts
   if (dateRangeFrom || dateRangeTo) {
     const customCards = Array.from(all).filter(c => {
