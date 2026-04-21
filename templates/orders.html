@@ -123,12 +123,12 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .order-card.selected { box-shadow: 0 0 0 3px #e74c3c; }
 .order-card.hidden { display: none; }
 
-.card-checkbox { width: 17px; height: 17px; accent-color: #4a90e2; cursor: pointer; flex-shrink: 0; margin-right: 8px; }
+.card-checkbox { width: 17px; height: 17px; accent-color: #4a90e2; cursor: pointer; flex-shrink: 0; }
 .card-header .card-checkbox { accent-color: #e74c3c; }
 .card-header { background: #4a90e2; color: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; }
-.card-header-main { display: flex; align-items: center; width: 100%; gap: 6px; }
+.card-header-main { display: flex; align-items: center; width: 100%; gap: 4px; }
 .card-header-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
-.card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; }
+.card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; overflow: hidden; }
 .card-header .date-time { font-size: 0.85rem; opacity: 0.92; }
 .btn-card-action {
   border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.15);
@@ -262,9 +262,9 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 .note-input:focus { outline: none; border-color: #f39c12; background: #fff; }
 .note-input::placeholder { color: #ccc; }
 .note-badge {
-  display: inline-block; color: #fff;
+  display: inline-block; color: #fff; flex-shrink: 0;
   font-size: 0.62rem; padding: 1px 5px; border-radius: 3px;
-  margin-left: 5px; vertical-align: middle; font-weight: bold; letter-spacing: 0.03em;
+  font-weight: bold; letter-spacing: 0.03em; white-space: nowrap;
 }
 .note-badge.priv { background: #f39c12; }
 .note-badge.pub  { background: #27ae60; }
@@ -441,7 +441,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       <div class="card-header">
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
-          <div class="order-no">{{ order.get("訂單號碼", "—") }}<span class="note-badge pub{% if not order.get('備註') %} hidden{% endif %}">公備</span><span class="note-badge priv{% if not order.get('note') %} hidden{% endif %}">私備</span></div>
+          <div class="order-no"><span class="order-no-text">{{ order.get("訂單號碼", "—") }}</span><span class="note-badge pub{% if not order.get('備註') %} hidden{% endif %}">公備</span><span class="note-badge priv{% if not order.get('note') %} hidden{% endif %}">私備</span></div>
           <div class="card-header-actions">
             <button class="btn-card-action btn-edit-card" onclick="openEditModal(this, event)">編輯</button>
             <button class="btn-card-action btn-copy-card" onclick="copyCard(this, event)">複製</button>
@@ -685,13 +685,10 @@ function updateCardDOM(card, data) {
   const merged = { ...getOrderData(card), ...data };
   script.textContent = JSON.stringify(merged);
   const orderNoEl = card.querySelector(".order-no");
-  orderNoEl.textContent = data["訂單號碼"] || "—";
-  const pubBadge = document.createElement("span");
-  pubBadge.className = "note-badge pub" + (merged["備註"] ? "" : " hidden");
-  pubBadge.textContent = "公備";
-  const privBadge = card.querySelector(".note-badge.priv") ? card.querySelector(".note-badge.priv").cloneNode(true) : (() => { const s = document.createElement("span"); s.className = "note-badge priv hidden"; s.textContent = "私備"; return s; })();
-  orderNoEl.appendChild(pubBadge);
-  orderNoEl.appendChild(privBadge);
+  const orderNoText = orderNoEl.querySelector(".order-no-text");
+  if (orderNoText) orderNoText.textContent = data["訂單號碼"] || "—";
+  const pubBadge = orderNoEl.querySelector(".note-badge.pub");
+  if (pubBadge) pubBadge.classList.toggle("hidden", !merged["備註"]);
   const dtEl = card.querySelector(".date-time"); if (dtEl) dtEl.textContent = data["預約日期"] || "";
   card.dataset.date = data["預約日期"] || "";
   card.dataset.search = `${merged["訂單號碼"] || ""} ${merged["聯絡電話"] || ""}`;
