@@ -357,7 +357,8 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     </button>
     {% endfor %}
     <button class="tab-btn date-tab-btn" data-tab="custom" onclick="switchTab('custom', this)">
-      自訂區間
+      <span>自訂區間 <span class="tab-count" id="cnt-custom"></span></span>
+      <span class="tab-sub" id="tsub-custom"></span>
     </button>
   </div>
 
@@ -1059,6 +1060,27 @@ function updateCounts() {
   document.getElementById("cnt-all").textContent = `(${all.length})`;
   const tsubAll = document.getElementById("tsub-all");
   if (tsubAll) tsubAll.innerHTML = makeSubHtml(allInv, allLux, allSvc);
+  // Custom range sub-counts
+  if (dateRangeFrom || dateRangeTo) {
+    const customCards = Array.from(all).filter(c => {
+      const n = dateToNum(c.dataset.date);
+      const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
+      return n !== null && (!f || n >= f) && (!t || n <= t);
+    });
+    const cntCustom = document.getElementById("cnt-custom");
+    if (cntCustom) cntCustom.textContent = customCards.length ? `(${customCards.length})` : "";
+    const tsubCustom = document.getElementById("tsub-custom");
+    if (tsubCustom) tsubCustom.innerHTML = makeSubHtml(
+      customCards.filter(c => c.dataset.hasInvoice === "yes").length,
+      customCards.filter(c => c.dataset.hasLuxury === "yes").length,
+      customCards.filter(c => c.dataset.hasSpecialSvc === "yes").length
+    );
+  } else {
+    const cntCustom = document.getElementById("cnt-custom");
+    if (cntCustom) cntCustom.textContent = "";
+    const tsubCustom = document.getElementById("tsub-custom");
+    if (tsubCustom) tsubCustom.innerHTML = "";
+  }
   document.querySelectorAll(".date-tab-btn[data-tab]").forEach(btn => {
     const tab = btn.dataset.tab;
     if (tab === "all" || tab === "custom") return;
