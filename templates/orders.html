@@ -751,7 +751,7 @@ function generateSimpleParts(data) {
     truncateSeq(data["接送地址"] || ""),
     truncateSeq(data["接送順序"] || ""),
     truncateAddr(data["連繫地址"] || ""),
-    truncateAddr(data["加點地址"] || ""),
+    /^[無xX]$/.test((data["加點地址"] || "").trim()) ? "" : truncateAddr(data["加點地址"] || ""),
     truncateAddr(data["抵達地址"] || ""),
   ].filter(Boolean);
   // Deduplicate: skip if already contained in previous part
