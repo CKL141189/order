@@ -125,15 +125,15 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 
 .card-checkbox { width: 17px; height: 17px; accent-color: #4a90e2; cursor: pointer; flex-shrink: 0; margin-right: 8px; }
 .card-header .card-checkbox { accent-color: #e74c3c; }
-.card-header { background: #4a90e2; color: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
-.card-header-main { display: flex; align-items: center; width: 100%; }
-.card-header-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.card-header { background: #4a90e2; color: #fff; padding: 10px 14px; display: flex; flex-direction: column; gap: 5px; }
+.card-header-main { display: flex; align-items: center; width: 100%; gap: 6px; }
+.card-header-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
 .card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; }
-.card-header .date-time { font-size: 0.85rem; opacity: 0.92; white-space: nowrap; }
+.card-header .date-time { font-size: 0.85rem; opacity: 0.92; }
 .btn-card-action {
   border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.15);
-  color: #fff; padding: 3px 10px; border-radius: 4px; cursor: pointer;
-  font-size: 0.78rem; font-family: inherit; white-space: nowrap; transition: background 0.15s;
+  color: #fff; padding: 5px 13px; border-radius: 4px; cursor: pointer;
+  font-size: 0.85rem; font-family: inherit; white-space: nowrap; transition: background 0.15s;
 }
 .btn-card-action:hover { background: rgba(255,255,255,0.32); }
 .btn-card-action.done { background: rgba(255,255,255,0.45); }
@@ -439,17 +439,17 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
           <div class="order-no">{{ order.get("訂單號碼", "—") }}<span class="note-badge{% if not order.get('note') %} hidden{% endif %}">備註</span></div>
-          <div class="date-time">{{ order.get("預約日期", "") }} {{ order.get("預約時間", "") }}</div>
+          <div class="card-header-actions">
+            <button class="btn-card-action btn-edit-card" onclick="openEditModal(this, event)">編輯</button>
+            <button class="btn-card-action btn-copy-card" onclick="copyCard(this, event)">複製</button>
+            <button class="btn-card-action btn-share-card" onclick="shareCard(this, event)">分享</button>
+          </div>
         </div>
-        <div class="card-header-actions">
-          <button class="btn-card-action btn-edit-card" onclick="openEditModal(this, event)">編輯</button>
-          <button class="btn-card-action btn-copy-card" onclick="copyCard(this, event)">複製</button>
-          <button class="btn-card-action btn-share-card" onclick="shareCard(this, event)">分享</button>
-        </div>
+        <div class="date-time">{{ order.get("預約日期", "") }} {{ order.get("預約時間", "") }}</div>
       </div>
       <div class="card-simple hidden"></div>
       <div class="card-body">
-        {% set skip = ["訂單號碼", "預約日期"] %}
+        {% set skip = ["訂單號碼", "預約日期", "預約時間"] %}
         {% for field in fields %}
           {% if field not in skip and order.get(field) %}
           <div class="field-row">
@@ -690,7 +690,7 @@ function updateCardDOM(card, data) {
   let newTab = "其他";
   tabBtns.forEach(b => { if (b.dataset.tab === data["預約日期"]) newTab = data["預約日期"]; });
   card.dataset.tab = newTab;
-  const skip = new Set(["訂單號碼", "預約日期"]);
+  const skip = new Set(["訂單號碼", "預約日期", "預約時間"]);
   const body = card.querySelector(".card-body");
   body.innerHTML = "";
   FIELDS_ORDER.forEach(f => {
