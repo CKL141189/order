@@ -769,7 +769,8 @@ function generateSimpleParts(data) {
 
   const line1 = (time ? time + " " : "") + mainPart;
   const paymentAmount = payment.replace(/下車付現|匯款預付|匯款/g, '').trim();
-  const line2 = [paymentAmount, carType].filter(Boolean).join("  ");
+  const paymentDisplay = paymentAmount ? "$" + paymentAmount : "";
+  const line2 = [paymentDisplay, carType].filter(Boolean).join("  ");
   const line3Parts = [];
   if (notes && (notes.includes("安全椅") || notes.includes("座椅"))) line3Parts.push(notes);
   const line3 = line3Parts.join("  ");
