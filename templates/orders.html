@@ -262,10 +262,12 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 .note-input:focus { outline: none; border-color: #f39c12; background: #fff; }
 .note-input::placeholder { color: #ccc; }
 .note-badge {
-  display: inline-block; background: #f39c12; color: #fff;
+  display: inline-block; color: #fff;
   font-size: 0.62rem; padding: 1px 5px; border-radius: 3px;
-  margin-left: 6px; vertical-align: middle; font-weight: bold; letter-spacing: 0.03em;
+  margin-left: 5px; vertical-align: middle; font-weight: bold; letter-spacing: 0.03em;
 }
+.note-badge.priv { background: #f39c12; }
+.note-badge.pub  { background: #27ae60; }
 .note-badge.hidden { display: none; }
 
 /* Peek detail button in simple view */
@@ -439,7 +441,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       <div class="card-header">
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
-          <div class="order-no">{{ order.get("訂單號碼", "—") }}<span class="note-badge{% if not order.get('note') %} hidden{% endif %}">備註</span></div>
+          <div class="order-no">{{ order.get("訂單號碼", "—") }}<span class="note-badge pub{% if not order.get('備註') %} hidden{% endif %}">公備</span><span class="note-badge priv{% if not order.get('note') %} hidden{% endif %}">私備</span></div>
           <div class="card-header-actions">
             <button class="btn-card-action btn-edit-card" onclick="openEditModal(this, event)">編輯</button>
             <button class="btn-card-action btn-copy-card" onclick="copyCard(this, event)">複製</button>
@@ -682,8 +684,15 @@ function updateCardDOM(card, data) {
   const script = card.querySelector(".order-data");
   const merged = { ...getOrderData(card), ...data };
   script.textContent = JSON.stringify(merged);
-  card.querySelector(".order-no").textContent = data["訂單號碼"] || "—";
-  card.querySelector(".date-time").textContent = `${data["預約日期"] || ""} ${data["預約時間"] || ""}`.trim();
+  const orderNoEl = card.querySelector(".order-no");
+  orderNoEl.textContent = data["訂單號碼"] || "—";
+  const pubBadge = document.createElement("span");
+  pubBadge.className = "note-badge pub" + (merged["備註"] ? "" : " hidden");
+  pubBadge.textContent = "公備";
+  const privBadge = card.querySelector(".note-badge.priv") ? card.querySelector(".note-badge.priv").cloneNode(true) : (() => { const s = document.createElement("span"); s.className = "note-badge priv hidden"; s.textContent = "私備"; return s; })();
+  orderNoEl.appendChild(pubBadge);
+  orderNoEl.appendChild(privBadge);
+  const dtEl = card.querySelector(".date-time"); if (dtEl) dtEl.textContent = data["預約日期"] || "";
   card.dataset.date = data["預約日期"] || "";
   card.dataset.search = `${merged["訂單號碼"] || ""} ${merged["聯絡電話"] || ""}`;
   const tabBtns = document.querySelectorAll(".date-tab-btn[data-tab]");
@@ -945,7 +954,7 @@ function saveNote(textarea) {
   const id = card.dataset.id;
   const note = textarea.value.trim();
   textarea.value = note;
-  const badge = card.querySelector(".note-badge");
+  const badge = card.querySelector(".note-badge.priv");
   if (badge) badge.classList.toggle("hidden", !note);
   fetch(`/api/orders/${id}`, {
     method: "POST",
