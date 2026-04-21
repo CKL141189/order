@@ -338,14 +338,19 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 
   <!-- Date Tabs -->
   <div class="tabs-bar" id="tabsBar">
+    {% set yesterday = date_tabs[0] %}
+    <button class="tab-btn date-tab-btn" data-tab="{{ yesterday.date_key }}" onclick="switchTab('{{ yesterday.date_key }}', this)">
+      <span>{{ yesterday.label }} {{ yesterday.display }} <span class="tab-count"></span></span>
+      <span class="tab-sub"></span>
+    </button>
     <button class="tab-btn date-tab-btn active" data-tab="all" onclick="switchTab('all', this)">
       <span>全部 <span class="tab-count" id="cnt-all"></span></span>
       <span class="tab-sub" id="tsub-all"></span>
     </button>
-    {% for tab in date_tabs %}
+    {% for tab in date_tabs[1:] %}
     <button class="tab-btn date-tab-btn" data-tab="{{ tab.date_key }}" onclick="switchTab('{{ tab.date_key }}', this)">
-      <span>{{ tab.label }} {{ tab.display }} <span class="tab-count" id="cnt-{{ loop.index }}"></span></span>
-      <span class="tab-sub" id="tsub-{{ loop.index }}"></span>
+      <span>{{ tab.label }} {{ tab.display }} <span class="tab-count"></span></span>
+      <span class="tab-sub"></span>
     </button>
     {% endfor %}
     <button class="tab-btn date-tab-btn" data-tab="custom" onclick="switchTab('custom', this)">

@@ -193,7 +193,7 @@ def order_sort_key(order):
 
 def get_date_tabs():
     today = datetime.utcnow() + timedelta(hours=8)
-    labels = ["昨天", "今天", "明天", "後天", "", ""]
+    labels = ["昨天", "今天", "明天", "後天"]
     tabs = []
     for i, label in enumerate(labels):
         d = today + timedelta(days=i - 1)
