@@ -346,12 +346,8 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       <span>{{ yesterday.label }} {{ yesterday.display }} <span class="tab-count"></span></span>
       <span class="tab-sub"></span>
     </button>
-    <button class="tab-btn date-tab-btn active" data-tab="all" onclick="switchTab('all', this)">
-      <span>全部 <span class="tab-count" id="cnt-all"></span></span>
-      <span class="tab-sub" id="tsub-all"></span>
-    </button>
     {% for tab in date_tabs[1:] %}
-    <button class="tab-btn date-tab-btn" data-tab="{{ tab.date_key }}" onclick="switchTab('{{ tab.date_key }}', this)">
+    <button class="tab-btn date-tab-btn{% if loop.first %} active{% endif %}" data-tab="{{ tab.date_key }}" onclick="switchTab('{{ tab.date_key }}', this)">
       <span>{{ tab.label }} {{ tab.display }} <span class="tab-count"></span></span>
       <span class="tab-sub"></span>
     </button>
@@ -529,7 +525,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 </div>
 
 <script>
-let currentTab = "all";
+let currentTab = "{{ date_tabs[1].date_key }}";
 let currentDriverFilter = "all";
 let currentView = "detailed";
 let currentInvoiceFilter = false;
