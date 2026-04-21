@@ -804,7 +804,7 @@ function buildBulkText(format) {
     const driver = card.querySelector(".driver-name").textContent.trim();
     if (format === "simple") {
       const { line1, line2, line3 } = generateSimpleParts(data);
-      lines.push(`【${i+1}】${line1}`);
+      lines.push(line1);
       lines.push(line2);
       if (line3) lines.push(line3);
       if (driver) lines.push("司機：" + driver);
@@ -813,7 +813,7 @@ function buildBulkText(format) {
       FIELDS_ORDER.forEach(f => { if (data[f]) lines.push(f + "：" + data[f]); });
       if (driver) lines.push("司機：" + driver);
     }
-    if (i < cards.length - 1) lines.push("─".repeat(18));
+    if (i < cards.length - 1) lines.push("");
   });
   return lines.join("\n");
 }
