@@ -446,7 +446,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       </div>
       <div class="card-simple hidden"></div>
       <div class="card-body">
-        {% set skip = ["訂單號碼", "預約日期", "預約時間"] %}
+        {% set skip = ["訂單號碼", "預約日期"] %}
         {% for field in fields %}
           {% if field not in skip and order.get(field) %}
           <div class="field-row">
@@ -687,7 +687,7 @@ function updateCardDOM(card, data) {
   let newTab = "其他";
   tabBtns.forEach(b => { if (b.dataset.tab === data["預約日期"]) newTab = data["預約日期"]; });
   card.dataset.tab = newTab;
-  const skip = new Set(["訂單號碼", "預約日期", "預約時間"]);
+  const skip = new Set(["訂單號碼", "預約日期"]);
   const body = card.querySelector(".card-body");
   body.innerHTML = "";
   FIELDS_ORDER.forEach(f => {
