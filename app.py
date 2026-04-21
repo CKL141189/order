@@ -238,7 +238,6 @@ def orders_page():
     orders = load_orders()
     date_tabs = get_date_tabs()
     tab_keys = {t["date_key"] for t in date_tabs}
-    now_tw = datetime.utcnow() + timedelta(hours=8)
     for order in orders:
         raw_date = order.get("預約日期", "")
         try:
@@ -247,17 +246,6 @@ def orders_page():
         except Exception:
             norm_date = raw_date
         order["_tab"] = norm_date if norm_date in tab_keys else "其他"
-        # Flag orders booked within 3 days of service date
-        try:
-            svc_m, svc_d = [int(x) for x in raw_date.split("/")]
-            cr_str = order.get("created_at", "")
-            cr_date = datetime.strptime(cr_str[:10], "%Y/%m/%d")
-            svc_year = cr_date.year if svc_m >= cr_date.month else cr_date.year + 1
-            svc_date = datetime(svc_year, svc_m, svc_d)
-            diff = (svc_date - cr_date).days
-            order["_has_recent"] = 0 <= diff <= 3
-        except Exception:
-            order["_has_recent"] = False
     has_other = any(o["_tab"] == "其他" for o in orders)
     with get_db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:

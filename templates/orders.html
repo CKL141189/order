@@ -35,8 +35,7 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .sub-inv { color: #e67e22; font-weight: bold; }
 .sub-lux { color: #8e44ad; font-weight: bold; }
 .sub-svc { color: #27ae60; font-weight: bold; }
-.sub-rec { color: #e74c3c; font-weight: bold; }
-.tab-btn.active .sub-inv, .tab-btn.active .sub-lux, .tab-btn.active .sub-svc, .tab-btn.active .sub-rec { color: rgba(255,255,255,0.9); }
+.tab-btn.active .sub-inv, .tab-btn.active .sub-lux, .tab-btn.active .sub-svc { color: rgba(255,255,255,0.9); }
 
 /* View Toggle */
 .view-toggle-bar { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
@@ -163,8 +162,7 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .cal-sub { font-size: 0.55rem; display: flex; gap: 2px; justify-content: center; line-height: 1.2; min-height: 0.75em; }
 .cal-day.sel-start .cal-sub .sub-inv, .cal-day.sel-end .cal-sub .sub-inv,
 .cal-day.sel-start .cal-sub .sub-lux, .cal-day.sel-end .cal-sub .sub-lux,
-.cal-day.sel-start .cal-sub .sub-svc, .cal-day.sel-end .cal-sub .sub-svc,
-.cal-day.sel-start .cal-sub .sub-rec, .cal-day.sel-end .cal-sub .sub-rec { color: rgba(255,255,255,0.85); }
+.cal-day.sel-start .cal-sub .sub-svc, .cal-day.sel-end .cal-sub .sub-svc { color: rgba(255,255,255,0.85); }
 .cal-range-info { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 0.85rem; color: #555; }
 .btn-range-clear { background: #e0e0e0; color: #555; padding: 4px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-family: inherit; }
 .btn-range-clear:hover { background: #c8c8c8; }
@@ -393,9 +391,6 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     <button class="tab-btn" id="svcFilterBtn" onclick="toggleSvcFilter(this)" style="border-color:#27ae60;color:#27ae60;">
       單程/包車 <span class="tab-count" id="cnt-svc"></span>
     </button>
-    <button class="tab-btn" id="recentFilterBtn" onclick="toggleRecentFilter(this)" style="border-color:#e74c3c;color:#e74c3c;">
-      近3天預訂 <span class="tab-count" id="cnt-recent"></span>
-    </button>
   </div>
 
   <!-- Search -->
@@ -431,7 +426,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     {% set _note = order.get('備註', '') %}{% set _has_inv = '統一發票' in _note or '統編' in _note or '統一編號' in _note or '發票' in _note %}
     {% set _car = order.get('接送車型', '') | lower %}{% set _note_lux = order.get('備註', '') | lower %}{% set _has_lux = 'lm' in _car or '阿法' in _car or 'alphard' in _car or 'lm' in _note_lux or '阿法' in _note_lux or 'alphard' in _note_lux %}
     {% set _svc = order.get('服務項目', '') %}{% set _has_svc = '單程' in _svc or '包車' in _svc %}
-    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-has-luxury="{{ 'yes' if _has_lux else 'no' }}" data-has-special-svc="{{ 'yes' if _has_svc else 'no' }}" data-has-recent="{{ 'yes' if order._has_recent else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
+    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-has-luxury="{{ 'yes' if _has_lux else 'no' }}" data-has-special-svc="{{ 'yes' if _has_svc else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
       <div class="card-header">
         <div class="card-header-main">
           <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
@@ -529,7 +524,6 @@ let currentView = "detailed";
 let currentInvoiceFilter = false;
 let currentLuxuryFilter = false;
 let currentSvcFilter = false;
-let currentRecentFilter = false;
 let dateRangeFrom = null;
 let dateRangeTo = null;
 
@@ -546,7 +540,7 @@ let calRangeStart = null;
 let calRangeEnd = null;
 
 function buildDateCountMaps() {
-  const total = {}, inv = {}, lux = {}, svc = {}, rec = {};
+  const total = {}, inv = {}, lux = {}, svc = {};
   document.querySelectorAll(".order-card").forEach(card => {
     let n;
     if (currentSort === "created") {
@@ -561,17 +555,15 @@ function buildDateCountMaps() {
     if (card.dataset.hasInvoice === "yes") inv[n] = (inv[n] || 0) + 1;
     if (card.dataset.hasLuxury === "yes") lux[n] = (lux[n] || 0) + 1;
     if (card.dataset.hasSpecialSvc === "yes") svc[n] = (svc[n] || 0) + 1;
-    if (card.dataset.hasRecent === "yes") rec[n] = (rec[n] || 0) + 1;
   });
-  return { total, inv, lux, svc, rec };
+  return { total, inv, lux, svc };
 }
 
-function makeSubHtml(i, l, s, r) {
+function makeSubHtml(i, l, s) {
   const parts = [];
   if (i) parts.push(`<span class="sub-inv">票${i}</span>`);
   if (l) parts.push(`<span class="sub-lux">車${l}</span>`);
   if (s) parts.push(`<span class="sub-svc">單${s}</span>`);
-  if (r) parts.push(`<span class="sub-rec">近${r}</span>`);
   return parts.join("");
 }
 
@@ -582,7 +574,7 @@ function renderCalendar() {
   const totalDays = new Date(y, m, 0).getDate();
   const today = new Date();
   const grid = document.getElementById("calGrid");
-  const { total: dateCountMap, inv: invMap, lux: luxMap, svc: svcMap, rec: recMap } = buildDateCountMaps();
+  const { total: dateCountMap, inv: invMap, lux: luxMap, svc: svcMap } = buildDateCountMaps();
   grid.innerHTML = "";
   for (let i = 0; i < firstDow; i++) {
     const el = document.createElement("div"); el.className = "cal-day empty"; grid.appendChild(el);
@@ -592,8 +584,8 @@ function renderCalendar() {
     btn.className = "cal-day";
     const key = m * 100 + d;
     const cnt = dateCountMap[key] || 0;
-    const invC = invMap[key] || 0, luxC = luxMap[key] || 0, svcC = svcMap[key] || 0, recC = recMap[key] || 0;
-    const subHtml = makeSubHtml(invC, luxC, svcC, recC);
+    const invC = invMap[key] || 0, luxC = luxMap[key] || 0, svcC = svcMap[key] || 0;
+    const subHtml = makeSubHtml(invC, luxC, svcC);
     btn.innerHTML = `<span>${d}</span>` +
       `<span class="cal-count"${!cnt ? ' style="opacity:0"' : ''}>${cnt || ''}</span>` +
       `<span class="cal-sub"${!subHtml ? ' style="visibility:hidden"' : ''}>${subHtml || '&nbsp;'}</span>`;
@@ -987,9 +979,8 @@ function applyFilters() {
     const invoiceMatch = !currentInvoiceFilter || card.dataset.hasInvoice === "yes";
     const luxuryMatch = !currentLuxuryFilter || card.dataset.hasLuxury === "yes";
     const svcMatch = !currentSvcFilter || card.dataset.hasSpecialSvc === "yes";
-    const recentMatch = !currentRecentFilter || card.dataset.hasRecent === "yes";
     const searchMatch = !searchTerm || card.dataset.search.toLowerCase().includes(searchTerm);
-    card.classList.toggle("hidden", !(tabMatch && driverMatch && invoiceMatch && luxuryMatch && svcMatch && recentMatch && searchMatch));
+    card.classList.toggle("hidden", !(tabMatch && driverMatch && invoiceMatch && luxuryMatch && svcMatch && searchMatch));
   });
   updateSelCount();
   updateCounts();
@@ -1047,24 +1038,15 @@ function toggleSvcFilter(btn) {
   applyFilters();
 }
 
-function toggleRecentFilter(btn) {
-  currentRecentFilter = !currentRecentFilter;
-  btn.style.background = currentRecentFilter ? "#e74c3c" : "";
-  btn.style.color = currentRecentFilter ? "#fff" : "#e74c3c";
-  btn.style.borderColor = "#e74c3c";
-  applyFilters();
-}
-
 function updateCounts() {
   const all = document.querySelectorAll(".order-card");
   // "全部" tab sub-counts
   const allInv = Array.from(all).filter(c => c.dataset.hasInvoice === "yes").length;
   const allLux = Array.from(all).filter(c => c.dataset.hasLuxury === "yes").length;
   const allSvc = Array.from(all).filter(c => c.dataset.hasSpecialSvc === "yes").length;
-  const allRec = Array.from(all).filter(c => c.dataset.hasRecent === "yes").length;
   document.getElementById("cnt-all").textContent = `(${all.length})`;
   const tsubAll = document.getElementById("tsub-all");
-  if (tsubAll) tsubAll.innerHTML = makeSubHtml(allInv, allLux, allSvc, allRec);
+  if (tsubAll) tsubAll.innerHTML = makeSubHtml(allInv, allLux, allSvc);
   document.querySelectorAll(".date-tab-btn[data-tab]").forEach(btn => {
     const tab = btn.dataset.tab;
     if (tab === "all" || tab === "custom") return;
@@ -1076,8 +1058,7 @@ function updateCounts() {
     if (subEl) subEl.innerHTML = makeSubHtml(
       cards.filter(c => c.dataset.hasInvoice === "yes").length,
       cards.filter(c => c.dataset.hasLuxury === "yes").length,
-      cards.filter(c => c.dataset.hasSpecialSvc === "yes").length,
-      cards.filter(c => c.dataset.hasRecent === "yes").length
+      cards.filter(c => c.dataset.hasSpecialSvc === "yes").length
     );
   });
   const tabCards = Array.from(all).filter(card => {
@@ -1094,7 +1075,6 @@ function updateCounts() {
   const invoiceCount = tabCards.filter(c => c.dataset.hasInvoice === "yes").length;
   const luxuryCount = tabCards.filter(c => c.dataset.hasLuxury === "yes").length;
   const svcCount = tabCards.filter(c => c.dataset.hasSpecialSvc === "yes").length;
-  const recentCount = tabCards.filter(c => c.dataset.hasRecent === "yes").length;
   const cntAssigned = document.getElementById("cnt-assigned");
   const cntUnassigned = document.getElementById("cnt-unassigned");
   if (cntAssigned) cntAssigned.textContent = assignedCount ? `(${assignedCount})` : "";
@@ -1105,8 +1085,6 @@ function updateCounts() {
   if (cntLux) cntLux.textContent = luxuryCount ? `(${luxuryCount})` : "";
   const cntSvc = document.getElementById("cnt-svc");
   if (cntSvc) cntSvc.textContent = svcCount ? `(${svcCount})` : "";
-  const cntRecent = document.getElementById("cnt-recent");
-  if (cntRecent) cntRecent.textContent = recentCount ? `(${recentCount})` : "";
 }
 
 function toggleCard(card, event) {
