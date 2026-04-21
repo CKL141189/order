@@ -464,7 +464,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       </div>
       <div class="card-footer-btns" {% if drivers.get(order._id | string) %}style="display:none"{% endif %}>
         <button class="btn-assign-driver" onclick="assignDriver(this, event)">＋ 指定司機</button>
-        <button class="btn-no-driver" onclick="markNoDriver(this, event)">不須指定</button>
+        <button class="btn-no-driver" onclick="markNoDriver(this, event)">無司機服務</button>
       </div>
       <div class="card-note">
         <textarea class="note-input" placeholder="內部備註…" onclick="event.stopPropagation()" onblur="saveNote(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur()}">{{ order.get('note', '') }}</textarea>
@@ -1287,8 +1287,8 @@ function setCardDriver(card, name) {
 function markNoDriver(btn, event) {
   event.stopPropagation();
   const card = btn.closest(".order-card");
-  apiSetDriver(card.dataset.id, "(不須指定)");
-  setCardDriver(card, "(不須指定)");
+  apiSetDriver(card.dataset.id, "有指定司機");
+  setCardDriver(card, "有指定司機");
 }
 
 async function assignDriverBulk() {
