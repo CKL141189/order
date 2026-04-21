@@ -130,6 +130,11 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .card-header-actions { display: flex; gap: 6px; margin-left: auto; flex-shrink: 0; }
 .card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; overflow: hidden; }
 .card-header .date-time { font-size: 0.85rem; opacity: 0.92; }
+.card-header-tags { display: flex; gap: 4px; }
+.chtag { font-size: 0.62rem; padding: 1px 6px; border-radius: 3px; font-weight: bold; white-space: nowrap; }
+.chtag.inv { background: rgba(230,126,34,0.85); color: #fff; }
+.chtag.lux { background: rgba(142,68,173,0.85); color: #fff; }
+.chtag.svc { background: rgba(39,174,96,0.85); color: #fff; }
 .btn-card-action {
   border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.15);
   color: #fff; padding: 5px 13px; border-radius: 4px; cursor: pointer;
@@ -445,6 +450,13 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
             <button class="btn-card-action btn-share-card" onclick="shareCard(this, event)">分享</button>
           </div>
         </div>
+        {% if _has_inv or _has_lux or _has_svc %}
+        <div class="card-header-tags">
+          {% if _has_inv %}<span class="chtag inv">發票</span>{% endif %}
+          {% if _has_lux %}<span class="chtag lux">LM/Alphard</span>{% endif %}
+          {% if _has_svc %}<span class="chtag svc">單程/包車</span>{% endif %}
+        </div>
+        {% endif %}
       </div>
       <div class="card-simple hidden"></div>
       <div class="card-body">
