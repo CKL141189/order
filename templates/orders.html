@@ -58,11 +58,12 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 
 /* Toolbar */
 .toolbar {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 6px;
   background: #fff; border-radius: 8px; padding: 10px 14px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px;
 }
-.toolbar .sel-info { color: #666; font-size: 0.9rem; flex: 1; min-width: 100px; }
+.toolbar-row1, .toolbar-row2 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.toolbar .sel-info { color: #666; font-size: 0.9rem; }
 .toolbar .sel-info span { font-weight: bold; color: #2c3e50; }
 .btn-sm { padding: 6px 14px; font-size: 0.85rem; border-radius: 5px; border: none; cursor: pointer; font-family: inherit; }
 .btn-selall { background: #f0f0f0; color: #444; }
@@ -296,9 +297,8 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   /* Search */
   .search-bar input { font-size: 0.88rem; }
 
-  /* Toolbar: wrap, sel-info takes full row */
+  /* Toolbar */
   .toolbar { gap: 5px; padding: 8px 10px; }
-  .toolbar .sel-info { width: 100%; margin-bottom: 2px; }
   .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
 
   /* Single column cards */
@@ -408,20 +408,23 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 
   <!-- Toolbar -->
   <div class="toolbar">
-    <div class="sel-info">已選 <span id="selCount">0</span> 筆</div>
-    <button class="btn-sm btn-selall" onclick="toggleSelectAll()">全選當前</button>
-    <button class="btn-sm btn-selall" onclick="clearSelection()">取消全選</button>
-    <div class="toolbar-divider"></div>
-    <span class="toolbar-group-label">複製</span>
-    <button class="btn-sm btn-copy-bulk" id="copySimpleBtn" onclick="copySelected('simple')" disabled>簡易</button>
-    <button class="btn-sm btn-copy-bulk" id="copyDetailBtn" onclick="copySelected('detailed')" disabled>詳細</button>
-    <div class="toolbar-divider"></div>
-    <span class="toolbar-group-label">分享</span>
-    <button class="btn-sm btn-share-bulk" id="shareSimpleBtn" onclick="shareSelected('simple')" disabled>簡易</button>
-    <button class="btn-sm btn-share-bulk" id="shareDetailBtn" onclick="shareSelected('detailed')" disabled>詳細</button>
-    <div class="toolbar-divider"></div>
-    <button class="btn-sm btn-assign-bulk" id="assignBulkBtn" onclick="assignDriverBulk()" disabled>指定司機</button>
-    <button class="btn-sm btn-delete-bulk" id="deleteBtn" onclick="deleteSelected()" disabled>刪除選取</button>
+    <div class="toolbar-row1">
+      <button class="btn-sm btn-selall" onclick="toggleSelectAll()">全選當前</button>
+      <button class="btn-sm btn-selall" onclick="clearSelection()">取消全選</button>
+      <button class="btn-sm btn-assign-bulk" id="assignBulkBtn" onclick="assignDriverBulk()" disabled>指定司機</button>
+      <button class="btn-sm btn-delete-bulk" id="deleteBtn" onclick="deleteSelected()" disabled>刪除選取</button>
+    </div>
+    <div class="toolbar-row2">
+      <div class="sel-info">已選 <span id="selCount">0</span> 筆</div>
+      <div class="toolbar-divider"></div>
+      <span class="toolbar-group-label">複製</span>
+      <button class="btn-sm btn-copy-bulk" id="copySimpleBtn" onclick="copySelected('simple')" disabled>簡易</button>
+      <button class="btn-sm btn-copy-bulk" id="copyDetailBtn" onclick="copySelected('detailed')" disabled>詳細</button>
+      <div class="toolbar-divider"></div>
+      <span class="toolbar-group-label">分享</span>
+      <button class="btn-sm btn-share-bulk" id="shareSimpleBtn" onclick="shareSelected('simple')" disabled>簡易</button>
+      <button class="btn-sm btn-share-bulk" id="shareDetailBtn" onclick="shareSelected('detailed')" disabled>詳細</button>
+    </div>
   </div>
 
   <!-- Order Grid -->
