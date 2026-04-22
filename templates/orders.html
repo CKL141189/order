@@ -131,10 +131,10 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .card-header .order-no { font-weight: bold; font-size: 0.88rem; flex: 1; display: flex; align-items: center; flex-wrap: nowrap; gap: 4px; overflow: hidden; }
 .card-header .date-time { font-size: 0.85rem; opacity: 0.92; }
 .card-header-tags { display: flex; gap: 4px; }
-.chtag { font-size: 0.62rem; padding: 1px 6px; border-radius: 3px; font-weight: bold; white-space: nowrap; }
-.chtag.inv { background: rgba(230,126,34,0.85); color: #fff; }
-.chtag.lux { background: rgba(142,68,173,0.85); color: #fff; }
-.chtag.svc { background: rgba(39,174,96,0.85); color: #fff; }
+.chtag { font-size: 0.62rem; padding: 1px 6px; border-radius: 3px; font-weight: bold; white-space: nowrap; border: 1px solid rgba(255,255,255,0.6); color: #fff; }
+.chtag.inv { background: rgba(211,84,0,0.9); }
+.chtag.lux { background: rgba(142,68,173,0.9); }
+.chtag.svc { background: rgba(22,160,133,0.9); }
 .btn-card-action {
   border: 1px solid rgba(255,255,255,0.55); background: rgba(255,255,255,0.15);
   color: #fff; padding: 5px 13px; border-radius: 4px; cursor: pointer;
@@ -270,9 +270,10 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   display: inline-block; color: #fff; flex-shrink: 0;
   font-size: 0.62rem; padding: 1px 5px; border-radius: 3px;
   font-weight: bold; letter-spacing: 0.03em; white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.6);
 }
-.note-badge.priv { background: #f39c12; }
-.note-badge.pub  { background: #27ae60; }
+.note-badge.priv { background: #e67e22; }
+.note-badge.pub  { background: #16a085; }
 .note-badge.hidden { display: none; }
 
 /* Peek detail button in simple view */
