@@ -1318,8 +1318,8 @@ function setCardDriver(card, name) {
 function markNoDriver(btn, event) {
   event.stopPropagation();
   const card = btn.closest(".order-card");
-  apiSetDriver(card.dataset.id, "有指定司機");
-  setCardDriver(card, "有指定司機");
+  apiSetDriver(card.dataset.id, "已有司機服務");
+  setCardDriver(card, "已有司機服務");
 }
 
 async function assignDriverBulk() {
