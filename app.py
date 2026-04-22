@@ -24,6 +24,7 @@ FIELD_ALIASES = {
     "接送地點": "接送順序",
     "訂單編號": "訂單號碼",
     "先到地址": "連繫地址",
+    "訂單訊息": "訂單號碼",
 }
 
 # B-format orders use space-separated key value (no colon)
@@ -132,7 +133,7 @@ def parse_orders(raw_text):
              if line.strip() and line.strip() != "訂單訊息"]
 
     def _is_k_start(line):
-        return bool(re.search(r'訂單(?:號碼|編號)[ \t：：]', line))
+        return bool(re.search(r'訂單(?:號碼|編號|訊息)[ \t：：]', line))
 
     blocks = []  # each entry: [fmt, lines_list]
     for line in lines:
