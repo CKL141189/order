@@ -385,10 +385,10 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   <div class="tabs-bar" id="driverFilterBar">
     <button class="tab-btn driver-filter-btn active" data-driver-filter="all" onclick="switchDriverFilter('all', this)">全部司機</button>
     <button class="tab-btn driver-filter-btn" data-driver-filter="assigned" onclick="switchDriverFilter('assigned', this)">
-      已指定司機 <span class="tab-count" id="cnt-assigned"></span>
+      已有司機服務 <span class="tab-count" id="cnt-assigned"></span>
     </button>
     <button class="tab-btn driver-filter-btn" data-driver-filter="unassigned" onclick="switchDriverFilter('unassigned', this)">
-      未指定司機 <span class="tab-count" id="cnt-unassigned"></span>
+      目前無司機 <span class="tab-count" id="cnt-unassigned"></span>
     </button>
   </div>
   <!-- Special Filters -->
@@ -478,7 +478,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
         <button class="btn-driver-del" onclick="removeDriver(this, event)">刪除</button>
       </div>
       <div class="card-footer-btns" {% if drivers.get(order._id | string) %}style="display:none"{% endif %}>
-        <button class="btn-assign-driver" onclick="assignDriver(this, event)">＋ 指定司機</button>
+        <button class="btn-assign-driver" onclick="assignDriver(this, event)">目前無司機</button>
         <button class="btn-no-driver" onclick="markNoDriver(this, event)">無司機服務</button>
       </div>
       <div class="card-note">
