@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>刪除紀錄</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5; color: #333; }
+.container { max-width: 1100px; margin: 30px auto; padding: 0 20px 60px; }
+
+.nav-bar { display: flex; align-items: center; margin-bottom: 24px; gap: 10px; }
+.nav-bar h1 { font-size: 1.6rem; color: #2c3e50; flex: 1; text-align: center; }
+.btn-nav { padding: 8px 18px; color: #fff; border: none; border-radius: 6px; cursor: pointer;
+  font-size: 0.9rem; font-family: inherit; text-decoration: none; display: inline-block; transition: background 0.2s; white-space: nowrap; }
+.btn-nav.blue { background: #4a90e2; }
+.btn-nav.blue:hover { background: #357abd; }
+
+.toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: #fff; border-radius: 8px; padding: 10px 14px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px; }
+.sel-info { color: #666; font-size: 0.9rem; }
+.sel-info span { font-weight: bold; color: #2c3e50; }
+.btn-sm { padding: 6px 14px; font-size: 0.85rem; border-radius: 5px; border: none; cursor: pointer; font-family: inherit; }
+.btn-selall { background: #f0f0f0; color: #444; }
+.btn-selall:hover { background: #e0e0e0; }
+.btn-restore { background: #27ae60; color: #fff; }
+.btn-restore:hover:not(:disabled) { background: #1e8449; }
+.btn-restore:disabled { background: #a8d5b5; cursor: not-allowed; }
+.btn-purge { background: #e74c3c; color: #fff; }
+.btn-purge:hover:not(:disabled) { background: #c0392b; }
+.btn-purge:disabled { background: #f0a8a0; cursor: not-allowed; }
+.toolbar-divider { width: 1px; height: 22px; background: #ddd; flex-shrink: 0; }
+
+.order-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+.order-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden; transition: box-shadow 0.2s; cursor: pointer; position: relative; }
+.order-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.13); }
+.order-card.selected { box-shadow: 0 0 0 3px #27ae60; }
+
+.card-header { background: #95a5a6; color: #fff; padding: 8px 14px; display: flex; align-items: center; gap: 8px; }
+.card-checkbox { width: 17px; height: 17px; accent-color: #27ae60; cursor: pointer; flex-shrink: 0; }
+.order-no { font-weight: bold; font-size: 0.88rem; flex: 1; }
+.card-body { padding: 12px 14px; }
+.field-row { display: flex; margin-bottom: 6px; font-size: 0.88rem; line-height: 1.4; }
+.field-label { color: #999; min-width: 68px; flex-shrink: 0; }
+.field-value { color: #222; word-break: break-all; }
+.field-value.highlight { color: #e67e22; font-weight: bold; }
+.deleted-at { font-size: 0.75rem; color: #bbb; padding: 3px 14px 8px; text-align: right; }
+.driver-row { padding: 6px 14px; font-size: 0.85rem; color: #e74c3c; background: #fdecea;
+  border-top: 1px solid #f5c6cb; }
+
+.card-actions { display: flex; border-top: 1px solid #f0f0f0; }
+.btn-card { flex: 1; padding: 9px; border: none; cursor: pointer; font-size: 0.85rem;
+  font-family: inherit; transition: background 0.15s; }
+.btn-card-restore { background: #f1f8f1; color: #27ae60; }
+.btn-card-restore:hover { background: #d5f0d5; }
+.btn-card-purge { background: #fff8f8; color: #e74c3c; border-left: 1px solid #f0f0f0; }
+.btn-card-purge:hover { background: #fdecea; }
+
+.no-data { text-align: center; color: #aaa; padding: 60px 0; font-size: 1rem; }
+.no-data a { color: #4a90e2; text-decoration: none; }
+
+@media (max-width: 640px) {
+  .container { margin: 10px auto; padding: 0 10px 60px; }
+  .nav-bar { flex-wrap: wrap; justify-content: center; }
+  .nav-bar h1 { width: 100%; order: -1; font-size: 1.2rem; }
+  .order-grid { grid-template-columns: 1fr; gap: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="nav-bar">
+    <a href="/orders" class="btn-nav blue">← 訂單列表</a>
+    <h1>刪除紀錄</h1>
+    <div style="width:120px"></div>
+  </div>
+
+  {% if items %}
+  <div class="toolbar">
+    <button class="btn-sm btn-selall" onclick="toggleSelectAll()">全選</button>
+    <button class="btn-sm btn-selall" onclick="clearSelection()">取消全選</button>
+    <div class="toolbar-divider"></div>
+    <div class="sel-info">已選 <span id="selCount">0</span> 筆</div>
+    <div class="toolbar-divider"></div>
+    <button class="btn-sm btn-restore" id="restoreBtn" onclick="restoreSelected()" disabled>還原至訂單列表</button>
+    <button class="btn-sm btn-purge" id="purgeBtn" onclick="purgeSelected()" disabled>永久刪除</button>
+  </div>
+
+  <div class="order-grid" id="orderGrid">
+    {% for item in items %}
+    <div class="order-card" data-id="{{ item._id }}" onclick="toggleCard(this, event)">
+      <div class="card-header">
+        <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
+        <div class="order-no">{{ item.get("訂單號碼", "—") }}</div>
+      </div>
+      <div class="card-body">
+        {% set skip = ["訂單號碼"] %}
+        {% for field in fields %}
+          {% if field not in skip and item.get(field) %}
+          <div class="field-row">
+            <span class="field-label">{{ field }}</span>
+            <span class="field-value {% if field == '付費方式' %}highlight{% endif %}">{{ item[field] }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% if item._driver %}
+      <div class="driver-row">司機：{{ item._driver }}</div>
+      {% endif %}
+      <div class="deleted-at">刪除時間：{{ item._deleted_at }}</div>
+      <div class="card-actions">
+        <button class="btn-card btn-card-restore" onclick="restoreOne(this, event)">還原</button>
+        <button class="btn-card btn-card-purge" onclick="purgeOne(this, event)">永久刪除</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="no-data">
+    <p>沒有刪除紀錄</p>
+    <p style="margin-top:14px;"><a href="/orders">← 返回訂單列表</a></p>
+  </div>
+  {% endif %}
+
+</div>
+<script>
+function toggleCard(card, event) {
+  if (event.target.type === "checkbox" || event.target.tagName === "BUTTON") return;
+  const cb = card.querySelector(".card-checkbox");
+  cb.checked = !cb.checked;
+  card.classList.toggle("selected", cb.checked);
+  onCheckChange();
+}
+
+function onCheckChange() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    card.classList.toggle("selected", cb.checked);
+  });
+  updateSelCount();
+}
+
+function updateSelCount() {
+  const n = document.querySelectorAll(".order-card .card-checkbox:checked").length;
+  document.getElementById("selCount").textContent = n;
+  const off = n === 0;
+  document.getElementById("restoreBtn").disabled = off;
+  document.getElementById("purgeBtn").disabled = off;
+}
+
+function toggleSelectAll() {
+  const cards = [...document.querySelectorAll(".order-card")];
+  const allChecked = cards.every(c => c.querySelector(".card-checkbox").checked);
+  cards.forEach(card => {
+    const cb = card.querySelector(".card-checkbox");
+    cb.checked = !allChecked;
+    card.classList.toggle("selected", cb.checked);
+  });
+  updateSelCount();
+}
+
+function clearSelection() {
+  document.querySelectorAll(".order-card").forEach(card => {
+    card.querySelector(".card-checkbox").checked = false;
+    card.classList.remove("selected");
+  });
+  updateSelCount();
+}
+
+function getSelectedIds() {
+  return [...document.querySelectorAll(".order-card .card-checkbox:checked")]
+    .map(cb => cb.closest(".order-card").dataset.id);
+}
+
+async function restoreSelected() {
+  const ids = getSelectedIds();
+  if (!ids.length) return;
+  if (!confirm(`確定將選取的 ${ids.length} 筆訂單還原至訂單列表？`)) return;
+  const resp = await fetch("/api/orders/restore", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  });
+  const data = await resp.json();
+  if (data.ok) {
+    ids.forEach(id => document.querySelector(`.order-card[data-id="${id}"]`)?.remove());
+    updateSelCount();
+    checkEmpty();
+  }
+}
+
+async function purgeSelected() {
+  const ids = getSelectedIds();
+  if (!ids.length) return;
+  if (!confirm(`確定永久刪除選取的 ${ids.length} 筆訂單？此操作無法復原。`)) return;
+  const resp = await fetch("/api/orders/purge", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  });
+  const data = await resp.json();
+  if (data.ok) {
+    ids.forEach(id => document.querySelector(`.order-card[data-id="${id}"]`)?.remove());
+    updateSelCount();
+    checkEmpty();
+  }
+}
+
+async function restoreOne(btn, event) {
+  event.stopPropagation();
+  const card = btn.closest(".order-card");
+  const id = card.dataset.id;
+  const resp = await fetch("/api/orders/restore", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: [id] })
+  });
+  const data = await resp.json();
+  if (data.ok) { card.remove(); checkEmpty(); }
+}
+
+async function purgeOne(btn, event) {
+  event.stopPropagation();
+  if (!confirm("確定永久刪除此筆訂單？此操作無法復原。")) return;
+  const card = btn.closest(".order-card");
+  const id = card.dataset.id;
+  const resp = await fetch("/api/orders/purge", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids: [id] })
+  });
+  const data = await resp.json();
+  if (data.ok) { card.remove(); checkEmpty(); }
+}
+
+function checkEmpty() {
+  if (!document.querySelector(".order-card")) {
+    document.getElementById("orderGrid").innerHTML = "";
+    document.querySelector(".toolbar").remove();
+    const grid = document.getElementById("orderGrid");
+    grid.outerHTML = `<div class="no-data"><p>沒有刪除紀錄</p><p style="margin-top:14px;"><a href="/orders">← 返回訂單列表</a></p></div>`;
+  }
+}
+</script>
+</body>
+</html>

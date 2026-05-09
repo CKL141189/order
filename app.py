@@ -80,6 +80,14 @@ def init_db():
                     resolved BOOLEAN DEFAULT FALSE
                 )
             """)
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS deleted_orders (
+                    id SERIAL PRIMARY KEY,
+                    data TEXT NOT NULL,
+                    driver_name TEXT,
+                    deleted_at TEXT NOT NULL
+                )
+            """)
 
 _db_initialized = False
 
@@ -161,7 +169,15 @@ def parse_orders(raw_text):
             text = " ".join(block_lines)
             m = re.match(r'^([BbKk]\d{10,})\s*(.*)', text, re.DOTALL)
             if m:
-                order = parse_b_order(m.group(1), m.group(2).strip())
+                order_id = m.group(1)
+                # If body lines use K-format colon separators, parse as K
+                first_body = block_lines[1].strip() if len(block_lines) > 1 else ""
+                _kf = re.compile("(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")：")
+                if first_body and _kf.match(first_body):
+                    k_text = "訂單號碼：" + "".join(block_lines)
+                    order = parse_order(k_text)
+                else:
+                    order = parse_b_order(order_id, m.group(2).strip())
                 if order and _is_sufficient(order):
                     orders.append(order)
                 else:
@@ -384,11 +400,70 @@ def set_driver():
 @app.route("/api/orders/delete", methods=["POST"])
 def delete_orders():
     ids = request.get_json(force=True).get("ids", [])
+    now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
     with get_db() as conn:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             for oid in ids:
+                cur.execute("SELECT data FROM orders WHERE id=%s", (int(oid),))
+                row = cur.fetchone()
+                if not row:
+                    continue
+                cur.execute("SELECT name FROM drivers WHERE order_id=%s", (str(oid),))
+                driver_row = cur.fetchone()
+                driver_name = driver_row["name"] if driver_row else None
+                cur.execute(
+                    "INSERT INTO deleted_orders (data, driver_name, deleted_at) VALUES (%s, %s, %s)",
+                    (row["data"], driver_name, now_str)
+                )
                 cur.execute("DELETE FROM orders WHERE id=%s", (int(oid),))
                 cur.execute("DELETE FROM drivers WHERE order_id=%s", (str(oid),))
+    return jsonify({"ok": True})
+
+@app.route("/deleted")
+def deleted_page():
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT id, data, driver_name, deleted_at FROM deleted_orders ORDER BY id DESC")
+            rows = cur.fetchall()
+    items = []
+    for r in rows:
+        d = json.loads(r["data"])
+        d["_id"] = str(r["id"])
+        d["_driver"] = r["driver_name"] or ""
+        d["_deleted_at"] = r["deleted_at"]
+        items.append(d)
+    return render_template("deleted.html", items=items, fields=FIELDS)
+
+@app.route("/api/orders/restore", methods=["POST"])
+def restore_orders():
+    ids = request.get_json(force=True).get("ids", [])
+    now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            for did in ids:
+                cur.execute("SELECT data, driver_name FROM deleted_orders WHERE id=%s", (int(did),))
+                row = cur.fetchone()
+                if not row:
+                    continue
+                data = json.loads(row["data"])
+                data.setdefault("created_at", now_str)
+                cur.execute("INSERT INTO orders (data) VALUES (%s) RETURNING id", (json.dumps(data, ensure_ascii=False),))
+                new_id = cur.fetchone()["id"]
+                if row["driver_name"]:
+                    cur.execute(
+                        "INSERT INTO drivers (order_id, name) VALUES (%s, %s) ON CONFLICT (order_id) DO UPDATE SET name=EXCLUDED.name",
+                        (str(new_id), row["driver_name"])
+                    )
+                cur.execute("DELETE FROM deleted_orders WHERE id=%s", (int(did),))
+    return jsonify({"ok": True})
+
+@app.route("/api/orders/purge", methods=["POST"])
+def purge_orders():
+    ids = request.get_json(force=True).get("ids", [])
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for did in ids:
+                cur.execute("DELETE FROM deleted_orders WHERE id=%s", (int(did),))
     return jsonify({"ok": True})
 
 @app.route("/api/orders/<int:order_id>", methods=["POST"])
