@@ -348,6 +348,17 @@ def get_unresolved_failed():
             rows = cur.fetchall()
     return jsonify([dict(r) for r in rows])
 
+@app.route("/api/failed/save", methods=["POST"])
+def save_failed_log():
+    text = request.get_json(force=True).get("text", "").strip()
+    if not text:
+        return jsonify({"ok": False})
+    now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            cur.execute("INSERT INTO failed_orders (text, created_at) VALUES (%s, %s)", (text, now_str))
+    return jsonify({"ok": True})
+
 @app.route("/api/failed/<int:fid>/resolve", methods=["POST"])
 def resolve_failed(fid):
     with get_db() as conn:
