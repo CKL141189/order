@@ -232,15 +232,8 @@ def load_orders():
         o = json.loads(row["data"])
         o["_id"] = str(row["id"])
         orders.append(o)
+    orders.sort(key=order_sort_key)
     return orders
-
-def save_orders(orders):
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM orders")
-            for o in orders:
-                clean = {k: v for k, v in o.items() if not k.startswith("_")}
-                cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
 
 @app.route("/")
 def index():
@@ -372,13 +365,13 @@ def delete_failed(fid):
 @app.route("/api/add_orders", methods=["POST"])
 def api_add_orders():
     new_orders = request.get_json(force=True).get("orders", [])
-    existing = load_orders()
     now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
-    for o in new_orders:
-        o.setdefault("created_at", now_str)
-        existing.append(o)
-    existing.sort(key=order_sort_key)
-    save_orders(existing)
+    with get_db() as conn:
+        with conn.cursor() as cur:
+            for o in new_orders:
+                o.setdefault("created_at", now_str)
+                clean = {k: v for k, v in o.items() if not k.startswith("_")}
+                cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
     return jsonify({"ok": True})
 
 @app.route("/api/drivers", methods=["POST"])
