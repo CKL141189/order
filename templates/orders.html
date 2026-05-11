@@ -747,9 +747,12 @@ function truncateAddr(addr) {
 function cleanAddressText(addr) {
   if (!addr) return "";
   const labels = "(?:連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址)";
+  const nextPlace = "(?:台北|臺北|新北|桃園|台中|臺中|台南|臺南|高雄|基隆|新竹|苗栗|彰化|南投|雲林|嘉義|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|連江|桃機|機場|高鐵|車站|火車站|飯店|酒店|旅館|民宿|港口|碼頭)";
   return addr
     .replace(/\r/g, "\n")
     .replace(new RegExp(`${labels}(?:[：:]|\\s+)?\\s*`, "g"), "→")
+    .replace(/\s*(?:->|→|－|-|—|–|到|至|往)\s*/g, "→")
+    .replace(new RegExp(`([巷弄號樓])\\s*(?=${nextPlace})`, "g"), "$1→")
     .split(/[\n→]+/)
     .map(s => s.trim())
     .filter(Boolean)
@@ -758,7 +761,8 @@ function cleanAddressText(addr) {
 
 function looksLikeAddressText(value) {
   if (!value) return false;
-  return /(連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址)/.test(String(value));
+  return /(連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址)/.test(String(value)) ||
+    /[巷弄號樓].*(?:->|→|－|-|—|–|到|至|往|機場|高鐵|車站|火車站|飯店|酒店|旅館|民宿|港口|碼頭)/.test(String(value));
 }
 
 function truncateSeq(addr) {
