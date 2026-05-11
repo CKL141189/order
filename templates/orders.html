@@ -749,9 +749,8 @@ function cleanAddressText(addr) {
   const labels = "(?:連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|加點地址|先到地址)";
   return addr
     .replace(/\r/g, "\n")
-    .replace(new RegExp(`(^|[\\n→，,、]+)${labels}(?:[：:]|\\s+)\\s*`, "g"), "$1")
-    .replace(new RegExp(`\\s+${labels}(?:[：:]|\\s+)\\s*`, "g"), "→")
-    .split(/\n+/)
+    .replace(new RegExp(`${labels}(?:[：:]|\\s+)\\s*`, "g"), "→")
+    .split(/[\n→]+/)
     .map(s => s.trim())
     .filter(Boolean)
     .join("→");
