@@ -23,7 +23,7 @@ FIELD_ALIASES = {
     "聯繫地址": "連繫地址",
     "接送地點": "接送順序",
     "訂單編號": "訂單號碼",
-    "先到地址": "連繫地址",
+    "先到地址": "接送地址",
     "訂單訊息": "訂單號碼",
 }
 
@@ -31,7 +31,7 @@ FIELD_ALIASES = {
 B_FORMAT_FIELDS = [
     "用車日期", "用車時間", "服務項目", "航班編號", "接送車型",
     "乘客姓名", "用車人數", "行李件數", "聯絡電話", "聯絡地址",
-    "付費方式", "出發地址", "抵達地址", "加點地址", "備註",
+    "付費方式", "出發地址", "先到地址", "抵達地址", "加點地址", "備註",
 ]
 
 # All field names recognized by K-format parser (canonical + aliases)
@@ -147,7 +147,7 @@ def parse_orders(raw_text):
     for line in lines:
         if _is_k_start(line):
             blocks.append(["K", [line]])
-        elif re.match(r'^[BbKk]\d{10,}', line) and not _is_k_start(line):
+        elif re.match(r'^[BbKk]\d{10,}(?:-\d+)?', line) and not _is_k_start(line):
             blocks.append(["B", [line]])
         elif blocks:
             blocks[-1][1].append(line)
@@ -167,7 +167,7 @@ def parse_orders(raw_text):
                 failed.append(raw)
         else:
             text = " ".join(block_lines)
-            m = re.match(r'^([BbKk]\d{10,})\s*(.*)', text, re.DOTALL)
+            m = re.match(r'^([BbKk]\d{10,}(?:-\d+)?)\s*(.*)', text, re.DOTALL)
             if m:
                 order_id = m.group(1)
                 # If body lines use K-format colon separators, parse as K
