@@ -832,6 +832,24 @@ function initSimpleLines() {
   });
 }
 
+function normalizeDetailValue(value) {
+  if (!value) return "";
+  const labels = "(?:訂單號碼|預約日期|預約時間|服務項目|航班編號|接送車型|預約方式|乘客姓名|用車人數|行李件數|聯絡電話|連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|加點地址|先到地址|付費方式|備註)";
+  return String(value)
+    .replace(/\r\n?/g, "\n")
+    .replace(new RegExp(`\\s+(${labels})(?:[：:]|\\s+)\\s*`, "g"), "\n$1：")
+    .trim();
+}
+
+function pushDetailLine(lines, field, value) {
+  const formatted = normalizeDetailValue(value);
+  if (!formatted) return;
+  const parts = formatted.split("\n").map(s => s.trim()).filter(Boolean);
+  if (!parts.length) return;
+  lines.push(`${field}：${parts[0]}`);
+  parts.slice(1).forEach(part => lines.push(part));
+}
+
 // ── Bulk copy / share ──
 function buildBulkText(format) {
   const cards = [...document.querySelectorAll(".order-card .card-checkbox:checked")]
@@ -848,7 +866,7 @@ function buildBulkText(format) {
       if (driver) lines.push("司機：" + driver);
     } else {
       lines.push(`【${i+1}】`);
-      FIELDS_ORDER.forEach(f => { if (data[f]) lines.push(f + "：" + data[f]); });
+      FIELDS_ORDER.forEach(f => { pushDetailLine(lines, f, data[f]); });
       if (driver) lines.push("司機：" + driver);
     }
     if (i < cards.length - 1) lines.push("");
@@ -897,7 +915,7 @@ function getCardText(card) {
     return text;
   }
   const lines = [];
-  FIELDS_ORDER.forEach(f => { if (data[f]) lines.push(f + "：" + data[f]); });
+  FIELDS_ORDER.forEach(f => { pushDetailLine(lines, f, data[f]); });
   return lines.join("\n");
 }
 
@@ -1255,7 +1273,7 @@ function regenerateText() {
     if (driver) lines.push(`司機：${driver}`);
     FIELDS_ORDER.forEach(f => {
       if (["預約日期","預約時間","服務項目"].includes(f)) return;
-      if (o[f]) lines.push(`${f}：${o[f]}`);
+      pushDetailLine(lines, f, o[f]);
     });
     if (i < orders.length - 1) lines.push("─".repeat(20));
   });
