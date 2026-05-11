@@ -746,14 +746,19 @@ function truncateAddr(addr) {
 
 function cleanAddressText(addr) {
   if (!addr) return "";
-  const labels = "(?:連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|加點地址|先到地址)";
+  const labels = "(?:連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址)";
   return addr
     .replace(/\r/g, "\n")
-    .replace(new RegExp(`${labels}(?:[：:]|\\s+)\\s*`, "g"), "→")
+    .replace(new RegExp(`${labels}(?:[：:]|\\s+)?\\s*`, "g"), "→")
     .split(/[\n→]+/)
     .map(s => s.trim())
     .filter(Boolean)
     .join("→");
+}
+
+function looksLikeAddressText(value) {
+  if (!value) return false;
+  return /(連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址)/.test(String(value));
 }
 
 function truncateSeq(addr) {
@@ -782,7 +787,7 @@ function generateSimpleParts(data) {
   const payment = data["付費方式"] || "";
   const notes   = data["備註"] || "";
   // Collect all address fields in order, combine non-empty ones
-  const addrParts = [
+  const addrSources = [
     truncateSeq(data["出發地址"] || ""),
     truncateSeq(data["接送地址"] || ""),
     truncateSeq(data["接送順序"] || ""),
@@ -792,7 +797,18 @@ function generateSimpleParts(data) {
     truncateSeq(data["目的地址"] || ""),
     truncateSeq(data["目的地"] || ""),
     truncateSeq(data["到達地址"] || ""),
-  ].filter(Boolean);
+    truncateSeq(data["下車地址"] || ""),
+    truncateSeq(data["下車地點"] || ""),
+    truncateSeq(data["送達地址"] || ""),
+    truncateSeq(data["終點地址"] || ""),
+    ...Object.entries(data)
+      .filter(([key, value]) => !["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","付費方式"].includes(key) && looksLikeAddressText(value))
+      .map(([, value]) => truncateSeq(value || "")),
+  ];
+  const addrParts = addrSources
+    .flatMap(part => String(part || "").split(/→+/))
+    .map(s => s.trim())
+    .filter(Boolean);
   // Deduplicate: skip if already contained in previous part
   const dedupedParts = [];
   addrParts.forEach(p => {
