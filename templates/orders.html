@@ -744,8 +744,27 @@ function truncateAddr(addr) {
   return result || addr.trim();
 }
 
-function truncateSeq(addr) {
+function cleanAddressText(addr) {
   if (!addr) return "";
+  const labels = "(?:連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|加點地址|先到地址)";
+  return addr
+    .replace(/\r/g, "\n")
+    .replace(new RegExp(`(^|[\\n→，,、]+)${labels}[：:]\\s*`, "g"), "$1")
+    .replace(new RegExp(`\\s+${labels}[：:]\\s*`, "g"), "→")
+    .split(/\n+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .join("→");
+}
+
+function truncateSeq(addr) {
+  addr = cleanAddressText(addr);
+  if (!addr) return "";
+  addr = addr.replace(/(\d+[.)、．])\s*→\s*/g, "$1 ");
+  const arrowParts = addr.split(/→+/).map(s => s.trim()).filter(Boolean);
+  if (arrowParts.length > 1) {
+    return arrowParts.map(p => truncateSeq(p)).filter(Boolean).join("→");
+  }
   // Split on numbered stops like 1. 2. 3. etc, truncate each stop individually
   const stops = addr.split(/(?=\d+[.)、．])/).filter(Boolean);
   if (stops.length <= 1) return truncateAddr(addr);
@@ -768,9 +787,9 @@ function generateSimpleParts(data) {
     truncateSeq(data["出發地址"] || ""),
     truncateSeq(data["接送地址"] || ""),
     truncateSeq(data["接送順序"] || ""),
-    truncateAddr(data["連繫地址"] || ""),
-    /^[無xX]$/.test((data["加點地址"] || "").trim()) ? "" : truncateAddr(data["加點地址"] || ""),
-    truncateAddr(data["抵達地址"] || ""),
+    truncateSeq(data["連繫地址"] || ""),
+    /^[無xX]$/.test((data["加點地址"] || "").trim()) ? "" : truncateSeq(data["加點地址"] || ""),
+    truncateSeq(data["抵達地址"] || ""),
   ].filter(Boolean);
   // Deduplicate: skip if already contained in previous part
   const dedupedParts = [];
