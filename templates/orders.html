@@ -746,7 +746,7 @@ function truncateAddr(addr) {
 
 function cleanAddressText(addr) {
   if (!addr) return "";
-  const labels = "(?:連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址)";
+  const labels = "(?:連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址|地址)";
   const nextPlace = "(?:台北|臺北|新北|桃園|台中|臺中|台南|臺南|高雄|基隆|新竹|苗栗|彰化|南投|雲林|嘉義|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|連江|桃機|機場|高鐵|車站|火車站|飯店|酒店|旅館|民宿|港口|碼頭)";
   return addr
     .replace(/\r/g, "\n")
@@ -755,13 +755,14 @@ function cleanAddressText(addr) {
     .replace(new RegExp(`([巷弄號樓])\\s*(?=${nextPlace})`, "g"), "$1→")
     .split(/[\n→]+/)
     .map(s => s.trim())
+    .filter(s => !/^0\d{7,10}$/.test(s))
     .filter(Boolean)
     .join("→");
 }
 
 function looksLikeAddressText(value) {
   if (!value) return false;
-  return /(連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址)/.test(String(value)) ||
+  return /(連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址|地址)/.test(String(value)) ||
     /[巷弄號樓].*(?:->|→|－|-|—|–|到|至|往|機場|高鐵|車站|火車站|飯店|酒店|旅館|民宿|港口|碼頭)/.test(String(value));
 }
 
@@ -806,7 +807,7 @@ function generateSimpleParts(data) {
     truncateSeq(data["送達地址"] || ""),
     truncateSeq(data["終點地址"] || ""),
     ...Object.entries(data)
-      .filter(([key, value]) => !["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","付費方式"].includes(key) && looksLikeAddressText(value))
+      .filter(([key, value]) => !["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","付費方式"].includes(key) && looksLikeAddressText(value))
       .map(([, value]) => truncateSeq(value || "")),
   ];
   const addrParts = addrSources
@@ -856,7 +857,7 @@ function initSimpleLines() {
 
 function normalizeDetailValue(value) {
   if (!value) return "";
-  const labels = "(?:訂單號碼|預約日期|預約時間|服務項目|航班編號|接送車型|預約方式|乘客姓名|用車人數|行李件數|聯絡電話|連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|加點地址|先到地址|付費方式|備註)";
+  const labels = "(?:訂單號碼|預約日期|預約時間|服務項目|航班編號|接送車型|預約方式|乘客姓名|用車人數|行李件數|聯絡電話|連繫地址|聯絡地址|聯繫地址|接送地址|接送順序|接送地點|出發地址|抵達地址|目的地址|目的地|到達地址|下車地址|下車地點|送達地址|終點地址|加點地址|先到地址|地址|付費方式|備註)";
   return String(value)
     .replace(/\r\n?/g, "\n")
     .replace(new RegExp(`\\s+(${labels})(?:[：:]|\\s+)\\s*`, "g"), "\n$1：")
