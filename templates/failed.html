@@ -39,6 +39,8 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .btn-sm { padding: 5px 14px; font-size: 0.82rem; border-radius: 5px; border: none; cursor: pointer; font-family: inherit; transition: background 0.15s; }
 .btn-resolve { background: #27ae60; color: #fff; }
 .btn-resolve:hover { background: #1e8449; }
+.btn-add-order { background: #f39c12; color: #fff; }
+.btn-add-order:hover { background: #d68910; }
 .btn-copy { background: #4a90e2; color: #fff; }
 .btn-copy:hover { background: #357abd; }
 .btn-delete { background: #e0e0e0; color: #555; }
@@ -71,6 +73,9 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
       <div class="failed-body">{{ item.text }}</div>
       <div class="failed-footer">
         {% if not item.resolved %}
+        {% if item.type == 'failed' %}
+        <button class="btn-sm btn-add-order" onclick="addOrder(this)">加入訂單</button>
+        {% endif %}
         <button class="btn-sm btn-resolve" onclick="resolve(this)">標記已解決</button>
         {% endif %}
         <button class="btn-sm btn-copy" onclick="copyText(this)">複製文字</button>
@@ -125,6 +130,39 @@ function resolve(btn) {
       updateCounts();
       if (currentFilter === 'unresolved') card.style.display = 'none';
     }
+  });
+}
+
+function markResolved(card) {
+  card.dataset.resolved = 'true';
+  card.classList.add('resolved');
+  const typeTag = card.dataset.type === 'claude' ? '<span class="type-tag">Claude記錄</span>' : '';
+  card.querySelector('.failed-header').innerHTML =
+    `<span class="created">${card.querySelector('.created').textContent}</span>${typeTag}<span class="resolved-tag">已解決</span>`;
+  card.querySelectorAll('.btn-add-order, .btn-resolve').forEach(b => b.remove());
+  updateCounts();
+  if (currentFilter === 'unresolved') card.style.display = 'none';
+}
+
+function addOrder(btn) {
+  const card = btn.closest('.failed-card');
+  const id = card.dataset.id;
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '新增中…';
+  fetch(`/api/failed/${id}/add`, { method: 'POST' }).then(r => r.json()).then(d => {
+    btn.disabled = false;
+    if (d.ok) {
+      alert(`已加入 ${d.count} 筆訂單`);
+      markResolved(card);
+    } else {
+      btn.textContent = orig;
+      alert('仍無法解析，請複製內容後修正格式再新增。');
+    }
+  }).catch(() => {
+    btn.disabled = false;
+    btn.textContent = orig;
+    alert('新增失敗，請重試。');
   });
 }
 

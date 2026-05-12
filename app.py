@@ -109,7 +109,7 @@ def ensure_db():
 def parse_order(text):
     order = {}
     # Support both ： (fullwidth colon) and 1–3 spaces as field separator
-    pattern = "(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")(?:：|[ \t]{1,3})"
+    pattern = "(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")(?:[：:]|[ \t]{1,3})"
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
         key = parts[i]
@@ -149,7 +149,7 @@ def parse_orders(raw_text):
              if line.strip() and line.strip() != "訂單訊息"]
 
     def _is_k_start(line):
-        return bool(re.search(r'訂單(?:號碼|編號|訊息)[ \t：：]', line))
+        return bool(re.search(r'訂單(?:號碼|編號|訊息)[ \t：:]', line))
 
     blocks = []  # each entry: [fmt, lines_list]
     for line in lines:
@@ -180,7 +180,7 @@ def parse_orders(raw_text):
                 order_id = m.group(1)
                 # If body lines use K-format colon separators, parse as K
                 first_body = block_lines[1].strip() if len(block_lines) > 1 else ""
-                _kf = re.compile("(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")：")
+                _kf = re.compile("(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")[：:]")
                 if first_body and _kf.match(first_body):
                     k_text = "訂單號碼：" + "".join(block_lines)
                     order = parse_order(k_text)
@@ -362,6 +362,25 @@ def resolve_failed(fid):
         with conn.cursor() as cur:
             cur.execute("UPDATE failed_orders SET resolved=TRUE WHERE id=%s", (fid,))
     return jsonify({"ok": True})
+
+@app.route("/api/failed/<int:fid>/add", methods=["POST"])
+def add_failed_order(fid):
+    now_str = (datetime.utcnow() + timedelta(hours=8)).strftime("%Y/%m/%d %H:%M")
+    with get_db() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT text FROM failed_orders WHERE id=%s", (fid,))
+            row = cur.fetchone()
+            if not row:
+                return jsonify({"ok": False, "error": "not_found"})
+            orders, failed = parse_orders(row["text"])
+            if not orders:
+                return jsonify({"ok": False, "error": "parse_failed", "failed": failed})
+            for o in orders:
+                o.setdefault("created_at", now_str)
+                clean = {k: v for k, v in o.items() if not k.startswith("_")}
+                cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
+            cur.execute("UPDATE failed_orders SET resolved=TRUE WHERE id=%s", (fid,))
+    return jsonify({"ok": True, "count": len(orders), "failed": failed})
 
 @app.route("/api/failed/<int:fid>/delete", methods=["POST"])
 def delete_failed(fid):
