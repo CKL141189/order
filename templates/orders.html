@@ -838,7 +838,8 @@ function generateSimpleParts(data) {
 
   let mainPart = "";
   if (service.includes("接機")) {
-    mainPart = (flight ? flight + "接機" : "接機") + (address ? address : "");
+    const destination = getTransferDestination(service);
+    mainPart = (flight ? flight + "接機" : "接機") + (destination ? " " + destination : "") + (address ? address : "");
   } else if (service.includes("送船")) {
     const destination = getTransferDestination(service);
     mainPart = (address ? address : "") + "送船" + (destination ? " " + destination : "");
