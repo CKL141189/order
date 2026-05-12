@@ -17,7 +17,15 @@ FIELDS = [
 ]
 
 FIELD_ALIASES = {
+    "日期": "預約日期",
+    "預約日": "預約日期",
+    "用車日": "預約日期",
     "用車日期": "預約日期",
+    "搭車日期": "預約日期",
+    "乘車日期": "預約日期",
+    "接送日期": "預約日期",
+    "時間": "預約時間",
+    "預約時間": "預約時間",
     "用車時間": "預約時間",
     "地址": "連繫地址",
     "聯絡地址": "連繫地址",
@@ -37,7 +45,7 @@ FIELD_ALIASES = {
 
 # B-format orders use space-separated key value (no colon)
 B_FORMAT_FIELDS = [
-    "用車日期", "用車時間", "服務項目", "航班編號", "接送車型",
+    "日期", "預約日", "用車日", "用車日期", "搭車日期", "乘車日期", "接送日期", "時間", "預約時間", "用車時間", "服務項目", "航班編號", "接送車型",
     "乘客姓名", "用車人數", "行李件數", "聯絡電話", "聯絡地址",
     "地址", "付費方式", "出發地址", "先到地址", "目的地址", "目的地", "到達地址", "下車地址", "下車地點", "送達地址", "終點地址", "抵達地址", "加點地址", "備註",
 ]
@@ -378,7 +386,22 @@ def add_failed_order(fid):
             for o in orders:
                 o.setdefault("created_at", now_str)
                 clean = {k: v for k, v in o.items() if not k.startswith("_")}
-                cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
+                order_no = clean.get("訂單號碼", "")
+                updated = False
+                if order_no:
+                    cur.execute("SELECT id, data FROM orders")
+                    for existing in cur.fetchall():
+                        existing_data = json.loads(existing["data"])
+                        if existing_data.get("訂單號碼") == order_no:
+                            existing_data.update(clean)
+                            cur.execute(
+                                "UPDATE orders SET data=%s WHERE id=%s",
+                                (json.dumps(existing_data, ensure_ascii=False), existing["id"])
+                            )
+                            updated = True
+                            break
+                if not updated:
+                    cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
             cur.execute("UPDATE failed_orders SET resolved=TRUE WHERE id=%s", (fid,))
     return jsonify({"ok": True, "count": len(orders), "failed": failed})
 

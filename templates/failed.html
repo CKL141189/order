@@ -72,10 +72,10 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
       </div>
       <div class="failed-body">{{ item.text }}</div>
       <div class="failed-footer">
-        {% if not item.resolved %}
         {% if item.type == 'failed' %}
-        <button class="btn-sm btn-add-order" onclick="addOrder(this)">加入訂單</button>
+        <button class="btn-sm btn-add-order" onclick="addOrder(this)">加入/更新訂單</button>
         {% endif %}
+        {% if not item.resolved %}
         <button class="btn-sm btn-resolve" onclick="resolve(this)">標記已解決</button>
         {% endif %}
         <button class="btn-sm btn-copy" onclick="copyText(this)">複製文字</button>
@@ -139,7 +139,7 @@ function markResolved(card) {
   const typeTag = card.dataset.type === 'claude' ? '<span class="type-tag">Claude記錄</span>' : '';
   card.querySelector('.failed-header').innerHTML =
     `<span class="created">${card.querySelector('.created').textContent}</span>${typeTag}<span class="resolved-tag">已解決</span>`;
-  card.querySelectorAll('.btn-add-order, .btn-resolve').forEach(b => b.remove());
+  card.querySelectorAll('.btn-resolve').forEach(b => b.remove());
   updateCounts();
   if (currentFilter === 'unresolved') card.style.display = 'none';
 }
