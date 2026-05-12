@@ -551,8 +551,15 @@ let dateRangeTo = null;
 
 function dateToNum(s) {
   if (!s) return null;
-  const p = s.split("/").map(Number);
+  const m = String(s).match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+  if (!m) return null;
+  const p = [Number(m[1]), Number(m[2])];
   return p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) ? p[0] * 100 + p[1] : null;
+}
+
+function normalizeDateKey(s) {
+  const m = String(s || "").match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+  return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : (s || "");
 }
 
 // ── Calendar ──
@@ -695,11 +702,11 @@ function updateCardDOM(card, data) {
   const pubBadge = orderNoEl.querySelector(".note-badge.pub");
   if (pubBadge) pubBadge.classList.toggle("hidden", !merged["備註"]);
   const dtEl = card.querySelector(".date-time"); if (dtEl) dtEl.textContent = data["預約日期"] || "";
-  card.dataset.date = data["預約日期"] || "";
+  card.dataset.date = normalizeDateKey(data["預約日期"] || "");
   card.dataset.search = `${merged["訂單號碼"] || ""} ${merged["聯絡電話"] || ""}`;
   const tabBtns = document.querySelectorAll(".date-tab-btn[data-tab]");
   let newTab = "其他";
-  tabBtns.forEach(b => { if (b.dataset.tab === data["預約日期"]) newTab = data["預約日期"]; });
+  tabBtns.forEach(b => { if (b.dataset.tab === card.dataset.date) newTab = card.dataset.date; });
   card.dataset.tab = newTab;
   const skip = new Set(["訂單號碼"]);
   const body = card.querySelector(".card-body");

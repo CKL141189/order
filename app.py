@@ -53,6 +53,14 @@ B_FORMAT_FIELDS = [
 # All field names recognized by K-format parser (canonical + aliases)
 _ALL_K_FIELDS = FIELDS + [f for f in FIELD_ALIASES if f not in FIELDS]
 
+def normalize_date_value(value):
+    if not value:
+        return ""
+    m = re.search(r'(\d{1,2})\s*/\s*(\d{1,2})', str(value))
+    if not m:
+        return str(value).strip()
+    return f"{int(m.group(1))}/{int(m.group(2))}"
+
 @contextmanager
 def get_db():
     conn = psycopg2.connect(DATABASE_URL)
@@ -123,6 +131,8 @@ def parse_order(text):
         key = parts[i]
         canonical = FIELD_ALIASES.get(key, key)
         value = parts[i + 1].strip().replace("訂單訊息", "").strip()
+        if canonical == "預約日期":
+            value = normalize_date_value(value)
         if value:
             order[canonical] = value
     return order if order else None
@@ -143,6 +153,8 @@ def parse_b_order(order_id, text):
         key = parts[i]
         canonical = FIELD_ALIASES.get(key, key)
         value = parts[i + 1].strip()
+        if canonical == "預約日期":
+            value = normalize_date_value(value)
         if value:
             # Concatenate duplicate fields (e.g. 用車時間 6:50 + 用車時間 AM上午)
             if canonical in order:
@@ -203,7 +215,7 @@ def parse_orders(raw_text):
     return orders, failed
 
 def order_sort_key(order):
-    date_str = order.get("預約日期", "")
+    date_str = normalize_date_value(order.get("預約日期", ""))
     time_str = order.get("預約時間", "")
     try:
         month, day = map(int, date_str.split("/"))
@@ -265,12 +277,7 @@ def orders_page():
     date_tabs = get_date_tabs()
     tab_keys = {t["date_key"] for t in date_tabs}
     for order in orders:
-        raw_date = order.get("預約日期", "")
-        try:
-            m, d = raw_date.split("/")
-            norm_date = f"{int(m)}/{int(d)}"
-        except Exception:
-            norm_date = raw_date
+        norm_date = normalize_date_value(order.get("預約日期", ""))
         order["_tab"] = norm_date if norm_date in tab_keys else "其他"
     has_other = any(o["_tab"] == "其他" for o in orders)
     with get_db() as conn:
