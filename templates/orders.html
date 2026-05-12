@@ -564,14 +564,7 @@ let calRangeEnd = null;
 function buildDateCountMaps() {
   const total = {}, inv = {}, lux = {}, svc = {};
   document.querySelectorAll(".order-card").forEach(card => {
-    let n;
-    if (currentSort === "created") {
-      const cr = card.dataset.created || "";
-      const mat = cr.match(/\d{4}\/(\d+)\/(\d+)/);
-      n = mat ? parseInt(mat[1]) * 100 + parseInt(mat[2]) : null;
-    } else {
-      n = dateToNum(card.dataset.date);
-    }
+    const n = dateToNum(card.dataset.date);
     if (n === null) return;
     total[n] = (total[n] || 0) + 1;
     if (card.dataset.hasInvoice === "yes") inv[n] = (inv[n] || 0) + 1;
@@ -1065,11 +1058,6 @@ function saveNote(textarea) {
 const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","連繫地址","接送地址","加點地址","接送順序","出發地址","抵達地址","付費方式","備註"];
 
 function getCardDateKey(card) {
-  if (currentSort === "created") {
-    const created = card.dataset.created || "";
-    const m = created.match(/\d{4}\/(\d+)\/(\d+)/);
-    return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : "";
-  }
   return card.dataset.tab;
 }
 
