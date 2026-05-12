@@ -349,10 +349,6 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
 
   <!-- Date Tabs -->
   <div class="tabs-bar" id="tabsBar">
-    <button class="tab-btn date-tab-btn" data-tab="all" onclick="switchTab('all', this)">
-      <span>全部 <span class="tab-count" id="cnt-all"></span></span>
-      <span class="tab-sub" id="tsub-all"></span>
-    </button>
     {% set yesterday = date_tabs[0] %}
     <button class="tab-btn date-tab-btn" data-tab="{{ yesterday.date_key }}" onclick="switchTab('{{ yesterday.date_key }}', this)">
       <span>{{ yesterday.label }} {{ yesterday.display }} <span class="tab-count"></span></span>
@@ -1146,14 +1142,6 @@ function toggleSvcFilter(btn) {
 
 function updateCounts() {
   const all = document.querySelectorAll(".order-card");
-  const cntAll = document.getElementById("cnt-all");
-  if (cntAll) cntAll.textContent = all.length ? `(${all.length})` : "";
-  const tsubAll = document.getElementById("tsub-all");
-  if (tsubAll) tsubAll.innerHTML = makeSubHtml(
-    Array.from(all).filter(c => c.dataset.hasInvoice === "yes").length,
-    Array.from(all).filter(c => c.dataset.hasLuxury === "yes").length,
-    Array.from(all).filter(c => c.dataset.hasSpecialSvc === "yes").length
-  );
   // Custom range sub-counts
   if (dateRangeFrom || dateRangeTo) {
     const customCards = Array.from(all).filter(c => {
