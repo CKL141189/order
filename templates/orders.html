@@ -562,6 +562,12 @@ function normalizeDateKey(s) {
   return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : (s || "");
 }
 
+function getCreatedDateKey(card) {
+  const created = card.dataset.created || "";
+  const m = created.match(/\d{4}\/(\d{1,2})\/(\d{1,2})/);
+  return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : "";
+}
+
 // ── Calendar ──
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth() + 1;
@@ -571,7 +577,7 @@ let calRangeEnd = null;
 function buildDateCountMaps() {
   const total = {}, inv = {}, lux = {}, svc = {};
   document.querySelectorAll(".order-card").forEach(card => {
-    const n = dateToNum(card.dataset.date);
+    const n = dateToNum(getCardDateKey(card));
     if (n === null) return;
     total[n] = (total[n] || 0) + 1;
     if (card.dataset.hasInvoice === "yes") inv[n] = (inv[n] || 0) + 1;
@@ -1065,6 +1071,9 @@ function saveNote(textarea) {
 const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","連繫地址","接送地址","加點地址","接送順序","出發地址","抵達地址","付費方式","備註"];
 
 function getCardDateKey(card) {
+  if (currentSort === "created") {
+    return getCreatedDateKey(card);
+  }
   return card.dataset.tab;
 }
 
@@ -1076,7 +1085,7 @@ function applyFilters() {
     if (searchTerm || currentTab === "all") {
       tabMatch = true;
     } else if (currentTab === "custom") {
-      const n = dateToNum(card.dataset.date);
+      const n = dateToNum(getCardDateKey(card));
       const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
       tabMatch = n !== null && (!f || n >= f) && (!t || n <= t);
     } else {
@@ -1152,7 +1161,7 @@ function updateCounts() {
   // Custom range sub-counts
   if (dateRangeFrom || dateRangeTo) {
     const customCards = Array.from(all).filter(c => {
-      const n = dateToNum(c.dataset.date);
+      const n = dateToNum(getCardDateKey(c));
       const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
       return n !== null && (!f || n >= f) && (!t || n <= t);
     });
@@ -1187,7 +1196,7 @@ function updateCounts() {
   const tabCards = Array.from(all).filter(card => {
     if (currentTab === "all") return true;
     if (currentTab === "custom") {
-      const n = dateToNum(card.dataset.date);
+      const n = dateToNum(getCardDateKey(card));
       const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
       return n !== null && (!f || n >= f) && (!t || n <= t);
     }
@@ -1478,10 +1487,13 @@ function applySort() {
     cards.sort((a, b) => {
       const ta = a.dataset.created || "";
       const tb = b.dataset.created || "";
-      if (!ta && !tb) return 0;
+      const ia = parseInt(a.dataset.id || "0", 10);
+      const ib = parseInt(b.dataset.id || "0", 10);
+      if (!ta && !tb) return ib - ia;
       if (!ta) return 1;
       if (!tb) return -1;
-      return tb.localeCompare(ta);
+      const byTime = tb.localeCompare(ta);
+      return byTime || (ib - ia);
     });
   } else {
     cards.sort((a, b) => parseInt(a.dataset.origIdx) - parseInt(b.dataset.origIdx));
