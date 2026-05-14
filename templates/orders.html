@@ -1074,7 +1074,7 @@ function getCardDateKey(card) {
   if (currentSort === "created") {
     return getCreatedDateKey(card);
   }
-  return card.dataset.tab;
+  return normalizeDateKey(card.dataset.date || card.dataset.tab || "");
 }
 
 // ── Combined filter apply ──
