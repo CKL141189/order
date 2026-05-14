@@ -551,14 +551,14 @@ let dateRangeTo = null;
 
 function dateToNum(s) {
   if (!s) return null;
-  const m = String(s).match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+  const m = String(s).match(/(\d{1,2})\s*[／/]\s*(\d{1,2})/);
   if (!m) return null;
   const p = [Number(m[1]), Number(m[2])];
   return p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]) ? p[0] * 100 + p[1] : null;
 }
 
 function normalizeDateKey(s) {
-  const m = String(s || "").match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+  const m = String(s || "").match(/(\d{1,2})\s*[／/]\s*(\d{1,2})/);
   return m ? `${parseInt(m[1])}/${parseInt(m[2])}` : (s || "");
 }
 

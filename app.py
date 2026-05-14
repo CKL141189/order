@@ -56,7 +56,7 @@ _ALL_K_FIELDS = FIELDS + [f for f in FIELD_ALIASES if f not in FIELDS]
 def normalize_date_value(value):
     if not value:
         return ""
-    m = re.search(r'(\d{1,2})\s*/\s*(\d{1,2})', str(value))
+    m = re.search(r'(\d{1,2})\s*[／/]\s*(\d{1,2})', str(value))
     if not m:
         return str(value).strip()
     return f"{int(m.group(1))}/{int(m.group(2))}"
@@ -554,14 +554,14 @@ def stats():
 
     def order_month(o):
         try:
-            m, _ = map(int, o.get("預約日期", "").split("/"))
+            m, _ = map(int, normalize_date_value(o.get("預約日期", "")).split("/"))
             return m
         except Exception:
             return None
 
     working = [o for o in orders if o["_driver"] and order_month(o) == filter_month]
     if filter_date:
-        working = [o for o in working if o.get("預約日期", "") == filter_date]
+        working = [o for o in working if normalize_date_value(o.get("預約日期", "")) == filter_date]
 
     phone_orders = []
     if search_phone:
