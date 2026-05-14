@@ -169,6 +169,15 @@ body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5
 .cal-day.sel-start .cal-sub .sub-inv, .cal-day.sel-end .cal-sub .sub-inv,
 .cal-day.sel-start .cal-sub .sub-lux, .cal-day.sel-end .cal-sub .sub-lux,
 .cal-day.sel-start .cal-sub .sub-svc, .cal-day.sel-end .cal-sub .sub-svc { color: rgba(255,255,255,0.85); }
+.range-daily-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.range-day-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #f8fafb; border: 1px solid #e8eef4; border-radius: 5px;
+  padding: 4px 8px; font-size: 0.78rem; color: #2c3e50;
+}
+.range-day-chip.empty { color: #aaa; }
+.range-day-date { font-weight: bold; }
+.range-day-count { color: #4a90e2; font-weight: bold; }
 .cal-range-info { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 0.85rem; color: #555; }
 .btn-range-clear { background: #e0e0e0; color: #555; padding: 4px 12px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.82rem; font-family: inherit; }
 .btn-range-clear:hover { background: #c8c8c8; }
@@ -377,6 +386,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
       <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
     </div>
     <div class="cal-grid" id="calGrid"></div>
+    <div class="range-daily-summary" id="rangeDailySummary"></div>
     <div class="cal-range-info">
       <span id="calRangeText">點選開始日期</span>
       <button class="btn-range-clear" onclick="clearDateRange()">清除</button>
@@ -595,6 +605,34 @@ function makeSubHtml(i, l, s) {
   return parts.join("");
 }
 
+function renderRangeDailySummary() {
+  const el = document.getElementById("rangeDailySummary");
+  if (!el) return;
+  el.innerHTML = "";
+  if (!calRangeStart) return;
+
+  const start = calRangeStart;
+  const end = calRangeEnd || calRangeStart;
+  const startDate = new Date(start.year, start.month - 1, start.day);
+  const endDate = new Date(end.year, end.month - 1, end.day);
+  const from = startDate <= endDate ? startDate : endDate;
+  const to = startDate <= endDate ? endDate : startDate;
+  const cards = Array.from(document.querySelectorAll(".order-card"));
+
+  for (let d = new Date(from); d <= to; d.setDate(d.getDate() + 1)) {
+    const key = `${d.getMonth() + 1}/${d.getDate()}`;
+    const dayCards = cards.filter(card => getCardDateKey(card) === key);
+    const count = dayCards.length;
+    const inv = dayCards.filter(c => c.dataset.hasInvoice === "yes").length;
+    const lux = dayCards.filter(c => c.dataset.hasLuxury === "yes").length;
+    const svc = dayCards.filter(c => c.dataset.hasSpecialSvc === "yes").length;
+    const chip = document.createElement("span");
+    chip.className = "range-day-chip" + (count ? "" : " empty");
+    chip.innerHTML = `<span class="range-day-date">${key}</span><span class="range-day-count">${count}筆</span>${makeSubHtml(inv, lux, svc)}`;
+    el.appendChild(chip);
+  }
+}
+
 function renderCalendar() {
   const y = calYear, m = calMonth;
   document.getElementById("calTitle").textContent = `${y}年 ${m}月`;
@@ -632,6 +670,7 @@ function renderCalendar() {
   if (!calRangeStart) txt.textContent = "點選開始日期";
   else if (!calRangeEnd) txt.textContent = `${calRangeStart.month}/${calRangeStart.day} — 再點結束日期（可點同一天）`;
   else txt.textContent = `${calRangeStart.month}/${calRangeStart.day} — ${calRangeEnd.month}/${calRangeEnd.day}`;
+  renderRangeDailySummary();
 }
 
 function calSelectDay(y, m, d) {
@@ -1158,6 +1197,7 @@ function toggleSvcFilter(btn) {
 
 function updateCounts() {
   const all = document.querySelectorAll(".order-card");
+  renderRangeDailySummary();
   // Custom range sub-counts
   if (dateRangeFrom || dateRangeTo) {
     const customCards = Array.from(all).filter(c => {
