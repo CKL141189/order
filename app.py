@@ -181,7 +181,7 @@ def parse_orders(raw_text):
         else:
             id_match = _find_loose_order_id(line)
             if id_match:
-                blocks.append(["B", [line[id_match.start(1):].strip()]])
+                blocks.append(["B", [line.strip()]])
             elif blocks:
                 blocks[-1][1].append(line)
 
@@ -200,17 +200,18 @@ def parse_orders(raw_text):
                 failed.append(raw)
         else:
             text = " ".join(block_lines)
-            m = re.match(r'^([BbKk]\d{10,}(?:-\d+)?)\s*(.*)', text, re.DOTALL)
+            m = _find_loose_order_id(text)
             if m:
-                order_id = m.group(1)
+                order_id = text[:m.end(1)].strip()
+                body_text = text[m.end(1):].strip()
                 # If body lines use K-format colon separators, parse as K
-                first_body = block_lines[1].strip() if len(block_lines) > 1 else ""
+                first_body = body_text or (block_lines[1].strip() if len(block_lines) > 1 else "")
                 _kf = re.compile("(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")[：:]")
                 if first_body and _kf.match(first_body):
-                    k_text = "訂單號碼：" + "".join(block_lines)
+                    k_text = "訂單號碼：" + order_id + body_text
                     order = parse_order(k_text)
                 else:
-                    order = parse_b_order(order_id, m.group(2).strip())
+                    order = parse_b_order(order_id, body_text)
                 if order and _is_sufficient(order):
                     orders.append(order)
                 else:
