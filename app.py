@@ -171,14 +171,19 @@ def parse_orders(raw_text):
     def _is_k_start(line):
         return bool(re.search(r'訂單(?:號碼|編號|訊息)[ \t：:]', line))
 
+    def _find_loose_order_id(line):
+        return re.search(r'([BbKk]\d{10,}(?:-\d+)?)', line)
+
     blocks = []  # each entry: [fmt, lines_list]
     for line in lines:
         if _is_k_start(line):
             blocks.append(["K", [line]])
-        elif re.match(r'^[BbKk]\d{10,}(?:-\d+)?', line) and not _is_k_start(line):
-            blocks.append(["B", [line]])
-        elif blocks:
-            blocks[-1][1].append(line)
+        else:
+            id_match = _find_loose_order_id(line)
+            if id_match:
+                blocks.append(["B", [line[id_match.start(1):].strip()]])
+            elif blocks:
+                blocks[-1][1].append(line)
 
     def _is_sufficient(order):
         return any(k in order for k in ("預約日期", "預約時間", "服務項目", "乘客姓名"))
