@@ -165,8 +165,18 @@ def parse_b_order(order_id, text):
 
 def parse_orders(raw_text):
     raw_text = raw_text.replace("\r\n", "\n").replace("\r", "\n")
-    lines = [line.strip() for line in raw_text.strip().splitlines()
-             if line.strip() and line.strip() != "訂單訊息"]
+
+    def _clean_line(line):
+        return line.strip().strip("\ufeff\u200b\u200c\u200d")
+
+    def _is_order_message_header(line):
+        return re.sub(r'[\s\u3000：:]+', '', line) == "訂單訊息"
+
+    lines = []
+    for raw_line in raw_text.strip().splitlines():
+        line = _clean_line(raw_line)
+        if line and not _is_order_message_header(line):
+            lines.append(line)
 
     def _is_k_start(line):
         return bool(re.search(r'訂單(?:號碼|編號|訊息)[ \t：:]', line))
@@ -190,6 +200,13 @@ def parse_orders(raw_text):
 
     orders = []
     failed = []
+    if not blocks:
+        raw = "\n".join(lines)
+        order = parse_order("".join(lines))
+        if order and _is_sufficient(order):
+            return [order], []
+        return [], ([raw] if raw else [])
+
     for fmt, block_lines in blocks:
         raw = "\n".join(block_lines)
         if fmt == "K":
