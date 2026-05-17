@@ -667,7 +667,7 @@ function openEditModal(btn, event) {
   const data = getOrderData(editingCardEl);
   const container = document.getElementById("editFields");
   container.innerHTML = "";
-  const multiLine = new Set(["連繫地址", "接送地址", "加點地址", "接送順序", "出發地址", "抵達地址", "備註"]);
+  const multiLine = new Set(["連繫地址", "接送地址", "先到地址", "加點地址", "接送順序", "出發地址", "抵達地址", "備註"]);
   FIELDS_ORDER.forEach(f => {
     const row = document.createElement("div");
     row.className = "edit-field-row";
@@ -814,6 +814,7 @@ function generateSimpleParts(data) {
   const addrSources = [
     truncateSeq(data["出發地址"] || ""),
     truncateSeq(data["接送地址"] || ""),
+    truncateSeq(data["先到地址"] || ""),
     truncateSeq(data["接送順序"] || ""),
     truncateSeq(data["連繫地址"] || ""),
     /^[無xX]$/.test((data["加點地址"] || "").trim()) ? "" : truncateSeq(data["加點地址"] || ""),
@@ -1068,7 +1069,7 @@ function saveNote(textarea) {
   });
 }
 
-const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","連繫地址","接送地址","加點地址","接送順序","出發地址","抵達地址","付費方式","備註"];
+const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","連繫地址","接送地址","先到地址","加點地址","接送順序","出發地址","抵達地址","付費方式","備註"];
 
 function getCardDateKey(card) {
   if (currentSort === "created") {
