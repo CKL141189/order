@@ -685,17 +685,33 @@ function openEditModal(btn, event) {
 function closeEditModal() { document.getElementById("editModal").classList.remove("open"); }
 function closeEditOnOverlay(e) { if (e.target === document.getElementById("editModal")) closeEditModal(); }
 
-function saveOrder() {
+async function postJson(url, payload) {
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok || !data.ok) throw new Error(data.error || "save_failed");
+  return data;
+}
+
+async function saveOrder() {
   const card = editingCardEl;
   const newData = {};
   document.querySelectorAll("#editFields [name]").forEach(el => { newData[el.name] = el.value.trim(); });
-  fetch(`/api/orders/${card.dataset.id}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(newData)
-  }).then(r => r.json()).then(res => {
-    if (res.ok) { updateCardDOM(card, newData); closeEditModal(); }
-  });
+  const btn = document.querySelector("#editModal .btn-save");
+  const originalText = btn ? btn.textContent : "";
+  if (btn) { btn.disabled = true; btn.textContent = "儲存中..."; }
+  try {
+    const res = await postJson(`/api/orders/${card.dataset.id}`, newData);
+    updateCardDOM(card, res.order || newData);
+    closeEditModal();
+  } catch (err) {
+    alert("訂單內容儲存失敗，請再試一次。");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = originalText || "儲存"; }
+  }
 }
 
 function updateCardDOM(card, data) {
@@ -1055,18 +1071,22 @@ function peekDetail(btn, event) {
   }
 }
 
-function saveNote(textarea) {
+async function saveNote(textarea) {
   const card = textarea.closest(".order-card");
   const id = card.dataset.id;
+  const previous = getOrderData(card).note || "";
   const note = textarea.value.trim();
   textarea.value = note;
   const badge = card.querySelector(".note-badge.priv");
-  if (badge) badge.classList.toggle("hidden", !note);
-  fetch(`/api/orders/${id}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ note })
-  });
+  try {
+    const res = await postJson(`/api/orders/${id}`, { note });
+    const script = card.querySelector(".order-data");
+    if (script && res.order) script.textContent = JSON.stringify(res.order);
+    if (badge) badge.classList.toggle("hidden", !note);
+  } catch (err) {
+    textarea.value = previous;
+    alert("內部備註儲存失敗，請再試一次。");
+  }
 }
 
 const FIELDS_ORDER = ["訂單號碼","預約日期","預約時間","服務項目","航班編號","接送車型","預約方式","乘客姓名","用車人數","行李件數","聯絡電話","連繫地址","接送地址","先到地址","加點地址","接送順序","出發地址","抵達地址","付費方式","備註"];
@@ -1337,22 +1357,26 @@ function openShareModal() {
 function closeShareModal() { document.getElementById("shareModal").classList.remove("open"); }
 function closeModalOnOverlay(e) { if (e.target === document.getElementById("shareModal")) closeShareModal(); }
 
-function copyText() {
+async function copyText() {
   const text = document.getElementById("shareText").value;
   const modalDriver = document.getElementById("driverName").value.trim();
-  navigator.clipboard.writeText(text).then(() => {
+  try {
+    await navigator.clipboard.writeText(text);
     const btn = document.getElementById("copyBtn");
     btn.textContent = "已複製！";
     btn.classList.add("copied");
     setTimeout(() => { btn.textContent = "複製文字"; btn.classList.remove("copied"); }, 2000);
     if (modalDriver) {
-      document.querySelectorAll(".order-card .card-checkbox:checked").forEach(cb => {
-        const card = cb.closest(".order-card");
-        apiSetDriver(card.dataset.id, modalDriver);
+      const cards = [...document.querySelectorAll(".order-card .card-checkbox:checked")]
+        .map(cb => cb.closest(".order-card"));
+      await Promise.all(cards.map(card => apiSetDriver(card.dataset.id, modalDriver)));
+      cards.forEach(card => {
         setCardDriver(card, modalDriver);
       });
     }
-  });
+  } catch (err) {
+    alert("複製或司機儲存失敗，請再試一次。");
+  }
 }
 
 function parseMinutes(timeStr) {
@@ -1397,11 +1421,7 @@ function updateConflicts() {
 }
 
 function apiSetDriver(orderId, name) {
-  return fetch("/api/drivers", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ order_id: orderId, name: name })
-  });
+  return postJson("/api/drivers", { order_id: orderId, name: name });
 }
 
 function setCardDriver(card, name) {
@@ -1423,11 +1443,15 @@ function setCardDriver(card, name) {
   applyFilters();
 }
 
-function markNoDriver(btn, event) {
+async function markNoDriver(btn, event) {
   event.stopPropagation();
   const card = btn.closest(".order-card");
-  apiSetDriver(card.dataset.id, "已有司機服務");
-  setCardDriver(card, "已有司機服務");
+  try {
+    const res = await apiSetDriver(card.dataset.id, "已有司機服務");
+    setCardDriver(card, res.name || "已有司機服務");
+  } catch (err) {
+    alert("司機服務儲存失敗，請再試一次。");
+  }
 }
 
 async function assignDriverBulk() {
@@ -1437,38 +1461,54 @@ async function assignDriverBulk() {
   const name = prompt(`請輸入司機姓名（將指定給 ${cards.length} 筆訂單）：`);
   if (!name || !name.trim()) return;
   const driverName = name.trim();
-  await Promise.all(cards.map(card => apiSetDriver(card.dataset.id, driverName)));
-  cards.forEach(card => setCardDriver(card, driverName));
-  updateCounts();
+  try {
+    await Promise.all(cards.map(card => apiSetDriver(card.dataset.id, driverName)));
+    cards.forEach(card => setCardDriver(card, driverName));
+    updateCounts();
+  } catch (err) {
+    alert("批次指定司機儲存失敗，請再試一次。");
+  }
 }
 
-function assignDriver(btn, event) {
+async function assignDriver(btn, event) {
   event.stopPropagation();
   const card = btn.closest(".order-card");
   const name = prompt("請輸入司機姓名：");
   if (name !== null && name.trim()) {
-    apiSetDriver(card.dataset.id, name.trim());
-    setCardDriver(card, name.trim());
+    try {
+      const res = await apiSetDriver(card.dataset.id, name.trim());
+      setCardDriver(card, res.name || name.trim());
+    } catch (err) {
+      alert("司機儲存失敗，請再試一次。");
+    }
   }
 }
 
-function editDriver(btn, event) {
+async function editDriver(btn, event) {
   event.stopPropagation();
   const card = btn.closest(".order-card");
   const current = card.querySelector(".driver-name").textContent;
   const name = prompt("修改司機姓名：", current);
   if (name && name.trim()) {
-    apiSetDriver(card.dataset.id, name.trim());
-    setCardDriver(card, name.trim());
+    try {
+      const res = await apiSetDriver(card.dataset.id, name.trim());
+      setCardDriver(card, res.name || name.trim());
+    } catch (err) {
+      alert("司機儲存失敗，請再試一次。");
+    }
   }
 }
 
-function removeDriver(btn, event) {
+async function removeDriver(btn, event) {
   event.stopPropagation();
   if (!confirm("確定要移除指定司機？")) return;
   const card = btn.closest(".order-card");
-  apiSetDriver(card.dataset.id, "");
-  setCardDriver(card, null);
+  try {
+    await apiSetDriver(card.dataset.id, "");
+    setCardDriver(card, null);
+  } catch (err) {
+    alert("移除司機失敗，請再試一次。");
+  }
 }
 
 function initServiceTypes() {

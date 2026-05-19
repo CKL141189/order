@@ -467,7 +467,7 @@ def set_driver():
                 )
             else:
                 cur.execute("DELETE FROM drivers WHERE order_id = %s", (order_id,))
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "order_id": order_id, "name": name})
 
 @app.route("/api/orders/delete", methods=["POST"])
 def delete_orders():
@@ -551,7 +551,7 @@ def update_order(order_id):
             order.update({k: v for k, v in data.items() if not k.startswith("_")})
             cur.execute("UPDATE orders SET data=%s WHERE id=%s",
                         (json.dumps(order, ensure_ascii=False), order_id))
-    return jsonify({"ok": True})
+    return jsonify({"ok": True, "order": order})
 
 @app.route("/stats")
 def stats():
