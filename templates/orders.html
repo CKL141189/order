@@ -914,6 +914,14 @@ function pushDetailLine(lines, field, value) {
   parts.slice(1).forEach(part => lines.push(part));
 }
 
+const DETAIL_COPY_EXCLUDE = new Set(["created_at", "note"]);
+function getDetailCopyFields(data) {
+  return Object.keys(data || {})
+    .filter(field => !field.startsWith("_"))
+    .filter(field => !DETAIL_COPY_EXCLUDE.has(field))
+    .filter(field => data[field]);
+}
+
 // ── Bulk copy / share ──
 function buildBulkText(format) {
   const cards = [...document.querySelectorAll(".order-card .card-checkbox:checked")]
@@ -930,7 +938,7 @@ function buildBulkText(format) {
       if (driver) lines.push("司機：" + driver);
     } else {
       lines.push(`【${i+1}】`);
-      FIELDS_ORDER.forEach(f => { pushDetailLine(lines, f, data[f]); });
+      getDetailCopyFields(data).forEach(f => { pushDetailLine(lines, f, data[f]); });
       if (driver) lines.push("司機：" + driver);
     }
     if (i < cards.length - 1) lines.push("");
@@ -979,7 +987,7 @@ function getCardText(card) {
     return text;
   }
   const lines = [];
-  FIELDS_ORDER.forEach(f => { pushDetailLine(lines, f, data[f]); });
+  getDetailCopyFields(data).forEach(f => { pushDetailLine(lines, f, data[f]); });
   return lines.join("\n");
 }
 
@@ -1337,7 +1345,7 @@ function regenerateText() {
     const driver = o._driver || modalDriver;
     lines.push(`【${i+1}】${o["預約日期"] || ""} ${o["預約時間"] || ""}　${o["服務項目"] || ""}`);
     if (driver) lines.push(`司機：${driver}`);
-    FIELDS_ORDER.forEach(f => {
+    getDetailCopyFields(o).forEach(f => {
       if (["預約日期","預約時間","服務項目"].includes(f)) return;
       pushDetailLine(lines, f, o[f]);
     });
