@@ -123,6 +123,7 @@ def ensure_db():
 
 def parse_order(text):
     order = {}
+    field_order = []
     # Support both ： (fullwidth colon) and 1–3 spaces as field separator
     pattern = "(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")(?:[：:]|[ \t]{1,3})"
     parts = re.split(pattern, text)
@@ -134,10 +135,15 @@ def parse_order(text):
             value = normalize_date_value(value)
         if value:
             order[canonical] = value
+            if canonical not in field_order:
+                field_order.append(canonical)
+    if order:
+        order["_field_order"] = field_order
     return order if order else None
 
 def parse_b_order(order_id, text):
     order = {"訂單號碼": order_id}
+    field_order = ["訂單號碼"]
     if not text.strip():
         return order
     # Normalize: fullwidth spaces in field names (e.g. 備　　註 → 備註)
@@ -160,6 +166,10 @@ def parse_b_order(order_id, text):
                 order[canonical] = order[canonical] + " " + value
             else:
                 order[canonical] = value
+                if canonical not in field_order:
+                    field_order.append(canonical)
+    if len(order) > 1:
+        order["_field_order"] = field_order
     return order if len(order) > 1 else None
 
 def parse_orders(raw_text):
@@ -414,7 +424,7 @@ def add_failed_order(fid):
                 return jsonify({"ok": False, "error": "parse_failed", "failed": failed})
             for o in orders:
                 o.setdefault("created_at", now_str)
-                clean = {k: v for k, v in o.items() if not k.startswith("_")}
+                clean = {k: v for k, v in o.items() if not k.startswith("_") or k == "_field_order"}
                 order_no = clean.get("訂單號碼", "")
                 updated = False
                 if order_no:
@@ -449,7 +459,7 @@ def api_add_orders():
         with conn.cursor() as cur:
             for o in new_orders:
                 o.setdefault("created_at", now_str)
-                clean = {k: v for k, v in o.items() if not k.startswith("_")}
+                clean = {k: v for k, v in o.items() if not k.startswith("_") or k == "_field_order"}
                 cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(clean, ensure_ascii=False),))
     return jsonify({"ok": True})
 

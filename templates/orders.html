@@ -916,10 +916,22 @@ function pushDetailLine(lines, field, value) {
 
 const DETAIL_COPY_EXCLUDE = new Set(["created_at", "note"]);
 function getDetailCopyFields(data) {
-  return Object.keys(data || {})
+  const visible = field => field &&
+    !field.startsWith("_") &&
+    !DETAIL_COPY_EXCLUDE.has(field) &&
+    data[field];
+  const preferred = Array.isArray(data?._field_order) && data._field_order.length
+    ? data._field_order
+    : FIELDS_ORDER;
+  const fields = preferred.filter(visible);
+  Object.keys(data || {})
     .filter(field => !field.startsWith("_"))
     .filter(field => !DETAIL_COPY_EXCLUDE.has(field))
-    .filter(field => data[field]);
+    .filter(field => data[field])
+    .forEach(field => {
+      if (!fields.includes(field)) fields.push(field);
+    });
+  return fields;
 }
 
 // ── Bulk copy / share ──
