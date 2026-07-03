@@ -65,6 +65,22 @@ def normalize_date_value(value):
 def looks_like_date_value(value):
     return bool(re.search(r'^\s*\d{1,2}\s*[／/]\s*\d{1,2}', str(value or "")))
 
+def merge_time_values(existing, value):
+    combined = " ".join(part.strip() for part in (str(existing or ""), str(value or "")) if part and part.strip())
+    if not combined:
+        return ""
+    has_am = bool(re.search(r'(上午|AM)', combined, re.IGNORECASE))
+    has_pm = bool(re.search(r'(下午|PM)', combined, re.IGNORECASE))
+    m = re.search(r'(\d{1,2})\s*[：:]\s*(\d{2})', combined)
+    if not m:
+        return combined
+    normalized_time = f"{int(m.group(1)):02d}:{m.group(2)}"
+    if has_pm:
+        return f"下午{normalized_time}"
+    if has_am:
+        return f"上午{normalized_time}"
+    return normalized_time
+
 @contextmanager
 def get_db():
     conn = psycopg2.connect(DATABASE_URL)
@@ -159,6 +175,7 @@ def parse_b_order(order_id, text):
     for field in B_FORMAT_FIELDS:
         text = re.sub(re.escape(field) + r'(?=[^\s\t])', field + ' ', text)
         text = text.replace(field + '\t', field + ' ')
+    text = text.strip() + " "
     pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ") "
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
@@ -172,8 +189,13 @@ def parse_b_order(order_id, text):
         if value:
             # Concatenate duplicate fields (e.g. 用車時間 6:50 + 用車時間 AM上午)
             if canonical in order:
-                order[canonical] = order[canonical] + " " + value
+                if canonical == "預約時間":
+                    order[canonical] = merge_time_values(order[canonical], value)
+                else:
+                    order[canonical] = order[canonical] + " " + value
             else:
+                if canonical == "預約時間":
+                    value = merge_time_values("", value)
                 order[canonical] = value
                 if canonical not in field_order:
                     field_order.append(canonical)
