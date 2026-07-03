@@ -27,6 +27,7 @@ FIELD_ALIASES = {
     "時間": "預約時間",
     "預約時間": "預約時間",
     "用車時間": "預約時間",
+    "服務車型": "接送車型",
     "地址": "連繫地址",
     "聯絡地址": "連繫地址",
     "聯繫地址": "連繫地址",
@@ -39,14 +40,15 @@ FIELD_ALIASES = {
     "下車地點": "抵達地址",
     "送達地址": "抵達地址",
     "終點地址": "抵達地址",
+    "付款方式": "付費方式",
     "訂單訊息": "訂單號碼",
 }
 
 # B-format orders use space-separated key value (no colon)
 B_FORMAT_FIELDS = [
-    "日期", "預約日", "用車日", "用車日期", "搭車日期", "乘車日期", "接送日期", "時間", "預約時間", "用車時間", "服務項目", "航班編號", "接送車型",
+    "日期", "預約日", "用車日", "用車日期", "搭車日期", "乘車日期", "接送日期", "時間", "預約時間", "用車時間", "服務項目", "航班編號", "接送車型", "服務車型",
     "乘客姓名", "用車人數", "行李件數", "聯絡電話", "聯絡地址",
-    "地址", "付費方式", "出發地址", "先到地址", "目的地址", "目的地", "到達地址", "下車地址", "下車地點", "送達地址", "終點地址", "抵達地址", "加點地址", "備註",
+    "地址", "付費方式", "付款方式", "出發地址", "先到地址", "目的地址", "目的地", "到達地址", "下車地址", "下車地點", "送達地址", "終點地址", "抵達地址", "加點地址", "備註",
 ]
 
 # All field names recognized by K-format parser (canonical + aliases)
@@ -59,6 +61,9 @@ def normalize_date_value(value):
     if not m:
         return str(value).strip()
     return f"{int(m.group(1))}/{int(m.group(2))}"
+
+def looks_like_date_value(value):
+    return bool(re.search(r'^\s*\d{1,2}\s*[／/]\s*\d{1,2}', str(value or "")))
 
 @contextmanager
 def get_db():
@@ -131,6 +136,8 @@ def parse_order(text):
         key = parts[i]
         canonical = FIELD_ALIASES.get(key, key)
         value = parts[i + 1].strip().replace("訂單訊息", "").strip()
+        if canonical == "預約時間" and looks_like_date_value(value):
+            canonical = "預約日期"
         if canonical == "預約日期":
             value = normalize_date_value(value)
         if value:
@@ -158,6 +165,8 @@ def parse_b_order(order_id, text):
         key = parts[i]
         canonical = FIELD_ALIASES.get(key, key)
         value = parts[i + 1].strip()
+        if canonical == "預約時間" and looks_like_date_value(value):
+            canonical = "預約日期"
         if canonical == "預約日期":
             value = normalize_date_value(value)
         if value:
