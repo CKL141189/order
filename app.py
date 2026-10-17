@@ -54,6 +54,11 @@ B_FORMAT_FIELDS = [
 # All field names recognized by K-format parser (canonical + aliases)
 _ALL_K_FIELDS = FIELDS + [f for f in FIELD_ALIASES if f not in FIELDS]
 
+def field_name_pattern(field):
+    # The short time alias must not match inside words such as 起飛時間.
+    prefix = r'(?<![A-Za-z\u3400-\u9fff])' if field == "時間" else ""
+    return prefix + re.escape(field)
+
 def normalize_date_value(value):
     if not value:
         return ""
@@ -146,7 +151,7 @@ def parse_order(text):
     order = {}
     field_order = []
     # Support both ： (fullwidth colon) and 1–3 spaces as field separator
-    pattern = "(" + "|".join(re.escape(f) for f in _ALL_K_FIELDS) + ")(?:[：:]|[ \t]{1,3})"
+    pattern = "(" + "|".join(field_name_pattern(f) for f in _ALL_K_FIELDS) + ")(?:[：:]|[ \t]{1,3})"
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
         key = parts[i]
@@ -173,10 +178,10 @@ def parse_b_order(order_id, text):
     text = re.sub(r'備[\s\u3000]+註', '備註', text)
     # Ensure every B-format field name is followed by a space (handles missing/tab separators)
     for field in B_FORMAT_FIELDS:
-        text = re.sub(re.escape(field) + r'(?=[^\s\t])', field + ' ', text)
-        text = text.replace(field + '\t', field + ' ')
+        text = re.sub(field_name_pattern(field) + r'(?=[^\s\t])', field + ' ', text)
+        text = re.sub(field_name_pattern(field) + '\t', field + ' ', text)
     text = text.strip() + " "
-    pattern = "(" + "|".join(re.escape(f) for f in B_FORMAT_FIELDS) + ") "
+    pattern = "(" + "|".join(field_name_pattern(f) for f in B_FORMAT_FIELDS) + ") "
     parts = re.split(pattern, text)
     for i in range(1, len(parts) - 1, 2):
         key = parts[i]
@@ -242,7 +247,7 @@ def parse_orders(raw_text):
     failed = []
     if not blocks:
         raw = "\n".join(lines)
-        order = parse_order("".join(lines))
+        order = parse_order("\n".join(lines))
         if order and _is_sufficient(order):
             return [order], []
         return [], ([raw] if raw else [])
@@ -250,7 +255,7 @@ def parse_orders(raw_text):
     for fmt, block_lines in blocks:
         raw = "\n".join(block_lines)
         if fmt == "K":
-            order = parse_order("".join(block_lines))
+            order = parse_order("\n".join(block_lines))
             if order and _is_sufficient(order):
                 orders.append(order)
             else:
