@@ -6,7 +6,7 @@ import re
 import psycopg2.extras
 
 
-PAGE_SIZE = 50
+PAGE_SIZE = 100
 
 # Materialize parsing once: inlining repeats JSON casts and regexes per aggregate.
 LISTING_CTE = r"""

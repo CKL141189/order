@@ -40,10 +40,11 @@ class OrderQueryPostgresTests(unittest.TestCase):
     def test_pages_are_bounded_stable_and_nonoverlapping(self):
         first, second, last = self.page(), self.page(page="2"), self.page(page="999")
         self.assertEqual(first["total"], 120)
-        self.assertEqual(first["pages"], 3)
-        self.assertEqual(len(first["orders"]), 50)
-        self.assertEqual([int(o["_id"]) for o in second["orders"]], list(range(51, 101)))
-        self.assertEqual(last["page"], 3)
+        self.assertEqual(first["pages"], 2)
+        self.assertEqual(first["page_size"], 100)
+        self.assertEqual(len(first["orders"]), 100)
+        self.assertEqual([int(o["_id"]) for o in second["orders"]], list(range(101, 121)))
+        self.assertEqual(last["page"], 2)
         self.assertEqual(len(last["orders"]), 20)
 
     def test_counts_are_scope_wide_and_filters_combine(self):
@@ -96,4 +97,4 @@ class OrderQueryPostgresTests(unittest.TestCase):
         self.assertEqual(get_order_summary(self.get_db, "date")[1]["invoice"], 2)
         with self.conn.cursor() as cur:
             cur.execute("DELETE FROM orders WHERE id > 100")
-        self.assertEqual(self.page(page="3")["page"], 2)
+        self.assertEqual(self.page(page="3")["page"], 1)

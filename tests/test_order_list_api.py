@@ -22,14 +22,15 @@ class OrderListApiTests(unittest.TestCase):
 
     def test_page_api_returns_bounded_cards_and_counts(self):
         page = {"orders": [{"_id": "1", "訂單號碼": "TEST-1", "預約日期": "10/21"}],
-                "drivers": {}, "total": 73, "page": 1, "pages": 2, "page_size": 50,
+                "drivers": {}, "total": 73, "page": 1, "pages": 1, "page_size": 100,
                 "counts": {"total": 73, "assigned": 3, "unassigned": 70, "invoice": 8, "luxury": 2, "svc": 1}}
         with patch.object(order_app, "get_order_page", return_value=page, create=True):
             response = self.client.get("/api/orders?tab=10/21")
         self.assertEqual(response.status_code, 200)
         result = response.get_json()
         self.assertEqual(result["total"], 73)
-        self.assertEqual(result["pages"], 2)
+        self.assertEqual(result["pages"], 1)
+        self.assertEqual(result["page_size"], 100)
         self.assertEqual(result["counts"]["invoice"], 8)
         self.assertIn("TEST-1", result["html"])
         self.assertNotIn("orders", result)
