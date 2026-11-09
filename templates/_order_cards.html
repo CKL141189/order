@@ -1,0 +1,56 @@
+    {% for order in orders %}
+    {% set service = order.get("服務項目", "") %}
+    {% set _invoice_text = (order.get('備註') or '') ~ ' ' ~ (order.get('付費方式') or '') %}
+    {% set _has_inv = '發票' in _invoice_text or '統編' in _invoice_text or '統一編號' in _invoice_text %}
+    {% set _car = order.get('接送車型', '') | lower %}{% set _note_lux = order.get('備註', '') | lower %}{% set _has_lux = 'lm' in _car or '阿法' in _car or 'alphard' in _car or 'lm' in _note_lux or '阿法' in _note_lux or 'alphard' in _note_lux %}
+    {% set _svc = order.get('服務項目', '') %}{% set _has_svc = '單程' in _svc or '包車' in _svc %}
+    <div class="order-card" data-tab="{{ order.get("預約日期", "") }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-has-luxury="{{ 'yes' if _has_lux else 'no' }}" data-has-special-svc="{{ 'yes' if _has_svc else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
+      <div class="card-header">
+        <div class="card-header-main">
+          <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
+          <div class="order-no"><span class="order-no-text">{{ order.get("訂單號碼", "—") }}</span><span class="note-badge pub{% if not order.get('備註') %} hidden{% endif %}">公備</span><span class="note-badge priv{% if not order.get('note') %} hidden{% endif %}">私備</span></div>
+          <div class="card-header-actions">
+            <button class="btn-card-action btn-edit-card" onclick="openEditModal(this, event)">編輯</button>
+            <button class="btn-card-action btn-copy-card" onclick="copyCard(this, event)">複製</button>
+            <button class="btn-card-action btn-share-card" onclick="shareCard(this, event)">分享</button>
+          </div>
+        </div>
+        {% if _has_inv or _has_lux or _has_svc %}
+        <div class="card-header-tags">
+          {% if _has_inv %}<span class="chtag inv">發票</span>{% endif %}
+          {% if _has_lux %}<span class="chtag lux">LM/Alphard</span>{% endif %}
+          {% if _has_svc %}<span class="chtag svc">單程/包車</span>{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-simple hidden"></div>
+      <div class="card-body">
+        {% set skip = ["訂單號碼"] %}
+        {% for field in fields %}
+          {% if field not in skip and order.get(field) %}
+          <div class="field-row">
+            <span class="field-label">{{ field }}</span>
+            <span class="field-value {% if field == '付費方式' %}highlight{% endif %}">{{ order[field] }}</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="card-driver {% if drivers.get(order._id | string) %}{% else %}hidden{% endif %}">
+        <span class="driver-label">司機：</span>
+        <span class="driver-name">{{ drivers.get(order._id | string, "") }}</span>
+        <button class="btn-driver-edit" onclick="editDriver(this, event)">編輯</button>
+        <button class="btn-driver-del" onclick="removeDriver(this, event)">刪除</button>
+      </div>
+      <div class="card-footer-btns" {% if drivers.get(order._id | string) %}style="display:none"{% endif %}>
+        <button class="btn-assign-driver" onclick="assignDriver(this, event)">目前無司機</button>
+        <button class="btn-no-driver" onclick="markNoDriver(this, event)">無司機服務</button>
+      </div>
+      <div class="card-note">
+        <textarea class="note-input" placeholder="內部備註…" onclick="event.stopPropagation()" onblur="saveNote(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur()}">{{ order.get('note', '') }}</textarea>
+      </div>
+      {% if order.get('created_at') %}
+      <div class="card-created">建立：{{ order['created_at'] }}</div>
+      {% endif %}
+      <script type="application/json" class="order-data">{{ order | tojson }}</script>
+    </div>
+    {% endfor %}

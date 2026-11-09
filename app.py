@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import json
 import os
 from datetime import datetime, timedelta
+from order_queries import get_order_page, get_order_summary, list_options
 
 app = Flask(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -342,26 +343,32 @@ def add_order_page():
 
 @app.route("/orders", methods=["GET"])
 def orders_page():
-    orders = load_orders()
     date_tabs = get_date_tabs()
-    tab_keys = {t["date_key"] for t in date_tabs}
-    for order in orders:
-        norm_date = normalize_date_value(order.get("預約日期", ""))
-        order["_tab"] = norm_date if norm_date in tab_keys else "其他"
-    has_other = any(o["_tab"] == "其他" for o in orders)
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            cur.execute("SELECT order_id, name FROM drivers")
-            driver_rows = cur.fetchall()
-    drivers = {row["order_id"]: row["name"] for row in driver_rows}
-    return render_template(
-        "orders.html",
-        orders=orders,
-        fields=FIELDS,
-        date_tabs=date_tabs,
-        has_other=has_other,
-        drivers=drivers,
-    )
+    return render_template("orders.html", orders=[], fields=FIELDS, date_tabs=date_tabs, drivers={}), 200, {"Cache-Control": "no-store"}
+
+
+@app.route("/api/orders", methods=["GET"])
+def order_list_api():
+    try:
+        options = list_options(request.args, get_date_tabs()[1]["date_key"])
+    except ValueError:
+        return jsonify({"ok": False, "error": "invalid_filter"}), 400
+    result = get_order_page(get_db, options)
+    html = render_template("_order_cards.html", orders=result.pop("orders"),
+                           drivers=result.pop("drivers"), fields=FIELDS)
+    response = jsonify({"ok": True, "html": html, **result})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route("/api/orders/summary", methods=["GET"])
+def order_summary_api():
+    sort = request.args.get("sort", "date")
+    if sort not in ("date", "created"):
+        return jsonify({"ok": False, "error": "invalid_filter"}), 400
+    response = jsonify({"ok": True, "dates": get_order_summary(get_db, sort)})
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 @app.route("/clear", methods=["POST"])
 def clear_orders():

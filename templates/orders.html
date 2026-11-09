@@ -8,6 +8,14 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: "Microsoft JhengHei", Arial, sans-serif; background: #f0f2f5; color: #333; }
 .container { max-width: 1100px; margin: 30px auto; padding: 0 20px 60px; }
+.order-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0; font-size: 0.85rem; }
+.page-controls { display: flex; align-items: center; gap: 8px; }
+.page-controls button { width: 36px; height: 36px; border: 1px solid #ccc; border-radius: 5px; background: #fff; cursor: pointer; font-size: 1.25rem; }
+.page-controls button:disabled { opacity: 0.4; cursor: default; }
+.page-input { width: 64px; height: 36px; padding: 4px; border: 1px solid #ccc; border-radius: 5px; font: inherit; }
+.list-status { padding: 12px 0; color: #666; }
+.list-status.hidden, #listRetry.hidden { display: none; }
+#orderGrid[aria-busy="true"] { opacity: 0.45; }
 
 /* Nav */
 .nav-bar { display: flex; align-items: center; margin-bottom: 24px; gap: 10px; }
@@ -331,7 +339,6 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
     </div>
   </div>
 
-  {% if orders %}
   <!-- Sort + View Toggle -->
   <div class="view-toggle-bar">
     <div class="toggle-group">
@@ -409,7 +416,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   <!-- Search -->
   <div class="search-bar">
     <div class="search-input-wrap">
-      <input type="text" id="searchInput" placeholder="搜尋訂單號碼或電話…" oninput="applyFilters()">
+      <input type="text" id="searchInput" placeholder="搜尋訂單號碼或電話…" oninput="queueSearch()">
       <button class="btn-search-clear" onclick="clearSearch()">✕</button>
     </div>
   </div>
@@ -417,7 +424,7 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   <!-- Toolbar -->
   <div class="toolbar">
     <div class="toolbar-row1">
-      <button class="btn-sm btn-selall" onclick="toggleSelectAll()">全選當前</button>
+      <button class="btn-sm btn-selall" onclick="toggleSelectAll()">全選本頁</button>
       <button class="btn-sm btn-selall" onclick="clearSelection()">取消全選</button>
       <button class="btn-sm btn-assign-bulk" id="assignBulkBtn" onclick="assignDriverBulk()" disabled>指定司機</button>
       <button class="btn-sm btn-delete-bulk" id="deleteBtn" onclick="deleteSelected()" disabled>刪除選取</button>
@@ -436,71 +443,29 @@ button { padding: 9px 22px; border: none; border-radius: 6px; cursor: pointer; f
   </div>
 
   <!-- Order Grid -->
-  <div class="order-grid" id="orderGrid">
-    {% for order in orders %}
-    {% set service = order.get("服務項目", "") %}
-    {% set _invoice_text = (order.get('備註') or '') ~ ' ' ~ (order.get('付費方式') or '') %}
-    {% set _has_inv = '發票' in _invoice_text or '統編' in _invoice_text or '統一編號' in _invoice_text %}
-    {% set _car = order.get('接送車型', '') | lower %}{% set _note_lux = order.get('備註', '') | lower %}{% set _has_lux = 'lm' in _car or '阿法' in _car or 'alphard' in _car or 'lm' in _note_lux or '阿法' in _note_lux or 'alphard' in _note_lux %}
-    {% set _svc = order.get('服務項目', '') %}{% set _has_svc = '單程' in _svc or '包車' in _svc %}
-    <div class="order-card" data-tab="{{ order._tab }}" data-date="{{ order.get('預約日期', '') }}" data-has-driver="{{ 'yes' if drivers.get(order._id | string) else 'no' }}" data-has-invoice="{{ 'yes' if _has_inv else 'no' }}" data-has-luxury="{{ 'yes' if _has_lux else 'no' }}" data-has-special-svc="{{ 'yes' if _has_svc else 'no' }}" data-id="{{ order._id }}" data-search="{{ order.get('訂單號碼', '') }} {{ order.get('聯絡電話', '') }}" data-orig-idx="{{ loop.index0 }}" data-created="{{ order.get('created_at', '') }}" onclick="toggleCard(this, event)">
-      <div class="card-header">
-        <div class="card-header-main">
-          <input type="checkbox" class="card-checkbox" onchange="onCheckChange()" onclick="event.stopPropagation()">
-          <div class="order-no"><span class="order-no-text">{{ order.get("訂單號碼", "—") }}</span><span class="note-badge pub{% if not order.get('備註') %} hidden{% endif %}">公備</span><span class="note-badge priv{% if not order.get('note') %} hidden{% endif %}">私備</span></div>
-          <div class="card-header-actions">
-            <button class="btn-card-action btn-edit-card" onclick="openEditModal(this, event)">編輯</button>
-            <button class="btn-card-action btn-copy-card" onclick="copyCard(this, event)">複製</button>
-            <button class="btn-card-action btn-share-card" onclick="shareCard(this, event)">分享</button>
-          </div>
-        </div>
-        {% if _has_inv or _has_lux or _has_svc %}
-        <div class="card-header-tags">
-          {% if _has_inv %}<span class="chtag inv">發票</span>{% endif %}
-          {% if _has_lux %}<span class="chtag lux">LM/Alphard</span>{% endif %}
-          {% if _has_svc %}<span class="chtag svc">單程/包車</span>{% endif %}
-        </div>
-        {% endif %}
-      </div>
-      <div class="card-simple hidden"></div>
-      <div class="card-body">
-        {% set skip = ["訂單號碼"] %}
-        {% for field in fields %}
-          {% if field not in skip and order.get(field) %}
-          <div class="field-row">
-            <span class="field-label">{{ field }}</span>
-            <span class="field-value {% if field == '付費方式' %}highlight{% endif %}">{{ order[field] }}</span>
-          </div>
-          {% endif %}
-        {% endfor %}
-      </div>
-      <div class="card-driver {% if drivers.get(order._id | string) %}{% else %}hidden{% endif %}">
-        <span class="driver-label">司機：</span>
-        <span class="driver-name">{{ drivers.get(order._id | string, "") }}</span>
-        <button class="btn-driver-edit" onclick="editDriver(this, event)">編輯</button>
-        <button class="btn-driver-del" onclick="removeDriver(this, event)">刪除</button>
-      </div>
-      <div class="card-footer-btns" {% if drivers.get(order._id | string) %}style="display:none"{% endif %}>
-        <button class="btn-assign-driver" onclick="assignDriver(this, event)">目前無司機</button>
-        <button class="btn-no-driver" onclick="markNoDriver(this, event)">無司機服務</button>
-      </div>
-      <div class="card-note">
-        <textarea class="note-input" placeholder="內部備註…" onclick="event.stopPropagation()" onblur="saveNote(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur()}">{{ order.get('note', '') }}</textarea>
-      </div>
-      {% if order.get('created_at') %}
-      <div class="card-created">建立：{{ order['created_at'] }}</div>
-      {% endif %}
-      <script type="application/json" class="order-data">{{ order | tojson }}</script>
+  <div class="order-pagination">
+    <span class="page-info" aria-live="polite"></span>
+    <div class="page-controls">
+      <button type="button" data-page-step="-1" onclick="changePage(-1)" title="上一頁" aria-label="上一頁" disabled>‹</button>
+      <label>頁 <input class="page-input" type="number" min="1" max="1" value="1" aria-label="頁碼" onchange="goToPage(this.value)"></label>
+      <button type="button" data-page-step="1" onclick="changePage(1)" title="下一頁" aria-label="下一頁" disabled>›</button>
     </div>
-    {% endfor %}
   </div>
-
-  {% else %}
-  <div class="no-data">
-    <p>尚無訂單</p>
-    <p style="margin-top:14px;"><a href="/add">← 前往新增訂單</a></p>
+  <div id="listStatus" class="list-status" role="status">讀取中…</div>
+  <button id="listRetry" class="btn-sm hidden" onclick="loadOrderPage(currentPage)">重新讀取</button>
+  <div id="summaryStatus" class="list-status hidden" role="status">
+    統計讀取失敗 <button class="btn-sm" onclick="loadDateSummary(true)">重試</button>
   </div>
-  {% endif %}
+  <div class="order-grid" id="orderGrid">
+    {% include "_order_cards.html" %}
+  </div>
+  <div class="order-pagination">
+    <span class="page-info"></span>
+    <div class="page-controls">
+      <button type="button" data-page-step="-1" onclick="changePage(-1)" title="上一頁" aria-label="上一頁" disabled>‹</button>
+      <button type="button" data-page-step="1" onclick="changePage(1)" title="下一頁" aria-label="下一頁" disabled>›</button>
+    </div>
+  </div>
 
 </div>
 
@@ -549,6 +514,19 @@ let currentLuxuryFilter = false;
 let currentSvcFilter = false;
 let dateRangeFrom = null;
 let dateRangeTo = null;
+let currentPage = 1;
+let totalPages = 1;
+let pageTotal = 0;
+let scopeCounts = null;
+let dateSummaries = null;
+let summaryCache = {};
+let listRequestId = 0;
+let listController = null;
+let summaryRequestId = 0;
+let summaryController = null;
+let searchTimer = null;
+let refreshTimer = null;
+let listBusy = false;
 
 function dateToNum(s) {
   if (!s) return null;
@@ -577,14 +555,12 @@ let calRangeEnd = null;
 
 function buildDateCountMaps() {
   const total = {}, inv = {}, lux = {}, svc = {};
-  document.querySelectorAll(".order-card").forEach(card => {
-    const n = dateToNum(getCardDateKey(card));
-    if (n === null) return;
-    total[n] = (total[n] || 0) + 1;
-    if (card.dataset.hasInvoice === "yes") inv[n] = (inv[n] || 0) + 1;
-    if (card.dataset.hasLuxury === "yes") lux[n] = (lux[n] || 0) + 1;
-    if (card.dataset.hasSpecialSvc === "yes") svc[n] = (svc[n] || 0) + 1;
-  });
+  for (const row of dateSummaries || []) {
+    total[row.date] = row.total;
+    inv[row.date] = row.invoice;
+    lux[row.date] = row.luxury;
+    svc[row.date] = row.svc;
+  }
   return { total, inv, lux, svc };
 }
 
@@ -616,7 +592,7 @@ function renderCalendar() {
     const invC = invMap[key] || 0, luxC = luxMap[key] || 0, svcC = svcMap[key] || 0;
     const subHtml = makeSubHtml(invC, luxC, svcC);
     btn.innerHTML = `<span>${d}</span>` +
-      `<span class="cal-count"${!cnt ? ' style="opacity:0"' : ''}>${cnt || ''}</span>` +
+      `<span class="cal-count"${dateSummaries && !cnt ? ' style="opacity:0"' : ''}>${dateSummaries ? (cnt || '') : '…'}</span>` +
       `<span class="cal-sub"${!subHtml ? ' style="visibility:hidden"' : ''}>${subHtml || '&nbsp;'}</span>`;
     if (y === today.getFullYear() && m === today.getMonth() + 1 && d === today.getDate())
       btn.classList.add("today");
@@ -772,8 +748,7 @@ function updateCardDOM(card, data) {
   const service = merged["服務項目"] || "";
   card.classList.toggle("is-pickup", service.includes("接機"));
   updateInvoiceBadge(card, merged);
-  applyFilters();
-  if (currentTab === "custom") renderCalendar();
+  refreshOrdersAfterChange();
 }
 
 // ── Simple line generation ──
@@ -1059,8 +1034,9 @@ function shareCard(btn, event) {
 
 function switchView(view, btn) {
   currentView = view;
+  if (view === "simple") initSimpleLines();
   document.querySelectorAll(".btn-view[data-view]").forEach(b => b.classList.remove("active"));
-  btn.classList.add("active");
+  (btn || document.querySelector(`.btn-view[data-view="${view}"]`)).classList.add("active");
   document.querySelectorAll(".order-card").forEach(card => {
     const body    = card.querySelector(".card-body");
     const simple  = card.querySelector(".card-simple");
@@ -1128,6 +1104,7 @@ async function saveNote(textarea) {
     const script = card.querySelector(".order-data");
     if (script && res.order) script.textContent = JSON.stringify(res.order);
     if (badge) badge.classList.toggle("hidden", !note);
+    if (!card.isConnected) refreshOrdersAfterChange();
   } catch (err) {
     textarea.value = previous;
     alert("內部備註儲存失敗，請再試一次。");
@@ -1143,31 +1120,167 @@ function getCardDateKey(card) {
   return normalizeDateKey(card.dataset.date || card.dataset.tab || "");
 }
 
-// ── Combined filter apply ──
-function applyFilters() {
-  const searchTerm = (document.getElementById("searchInput").value || "").trim().toLowerCase();
-  document.querySelectorAll(".order-card").forEach(card => {
-    let tabMatch;
-    if (searchTerm || currentTab === "all") {
-      tabMatch = true;
-    } else if (currentTab === "custom") {
-      const n = dateToNum(getCardDateKey(card));
-      const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
-      tabMatch = n !== null && (!f || n >= f) && (!t || n <= t);
-    } else {
-      tabMatch = getCardDateKey(card) === currentTab;
-    }
-    const driverMatch = currentDriverFilter === "all" ||
-      (currentDriverFilter === "assigned" && card.dataset.hasDriver === "yes") ||
-      (currentDriverFilter === "unassigned" && card.dataset.hasDriver === "no");
-    const invoiceMatch = !currentInvoiceFilter || card.dataset.hasInvoice === "yes";
-    const luxuryMatch = !currentLuxuryFilter || card.dataset.hasLuxury === "yes";
-    const svcMatch = !currentSvcFilter || card.dataset.hasSpecialSvc === "yes";
-    const searchMatch = !searchTerm || card.dataset.search.toLowerCase().includes(searchTerm);
-    card.classList.toggle("hidden", !(tabMatch && driverMatch && invoiceMatch && luxuryMatch && svcMatch && searchMatch));
+// Requests are cancellable so slower, older filters cannot replace newer results.
+function setListBusy(busy) {
+  listBusy = busy;
+  const grid = document.getElementById("orderGrid");
+  grid.setAttribute("aria-busy", String(busy));
+  grid.inert = busy;
+  document.querySelector(".toolbar").inert = busy;
+  updatePagination();
+}
+
+function updatePagination() {
+  document.querySelectorAll(".page-info").forEach(el => {
+    el.textContent = listBusy ? "讀取中…" : `共 ${pageTotal} 筆 · 第 ${currentPage} / ${totalPages} 頁`;
   });
-  updateSelCount();
+  document.querySelectorAll("[data-page-step]").forEach(btn => {
+    btn.disabled = listBusy || (Number(btn.dataset.pageStep) < 0 ? currentPage <= 1 : currentPage >= totalPages);
+  });
+  document.querySelectorAll(".page-input").forEach(input => {
+    input.value = currentPage;
+    input.max = totalPages;
+    input.disabled = listBusy;
+  });
+}
+
+function changePage(step) { goToPage(currentPage + step); }
+
+function goToPage(page) {
+  const n = Number(page);
+  if (!listBusy && Number.isInteger(n) && n >= 1 && n <= totalPages) {
+    loadOrderPage(n);
+    document.querySelector(".order-pagination").scrollIntoView({ block: "start" });
+  } else {
+    updatePagination();
+  }
+}
+
+async function loadOrderPage(page = 1, preserveSelection = false) {
+  if (listController) listController.abort();
+  const controller = listController = new AbortController();
+  const requestId = ++listRequestId;
+  const selected = new Set(preserveSelection
+    ? [...document.querySelectorAll(".card-checkbox:checked")].map(cb => cb.closest(".order-card").dataset.id)
+    : []);
+  currentPage = page;
+  scopeCounts = null;
+  setListBusy(true);
   updateCounts();
+  const status = document.getElementById("listStatus");
+  status.textContent = "讀取中…";
+  status.classList.remove("hidden");
+  document.getElementById("listRetry").classList.add("hidden");
+  const params = new URLSearchParams({
+    tab: currentTab, sort: currentSort, page,
+    driver: currentDriverFilter,
+    q: document.getElementById("searchInput").value.trim(),
+    invoice: currentInvoiceFilter ? "1" : "0",
+    luxury: currentLuxuryFilter ? "1" : "0",
+    svc: currentSvcFilter ? "1" : "0"
+  });
+  if (dateRangeFrom) params.set("start", dateRangeFrom);
+  if (dateRangeTo) params.set("end", dateRangeTo);
+  try {
+    const response = await fetch("/api/orders?" + params, { signal: controller.signal, cache: "no-store" });
+    if (!response.ok) throw new Error("load_failed");
+    const data = await response.json();
+    if (!data.ok) throw new Error("load_failed");
+    if (requestId !== listRequestId) return;
+    document.getElementById("orderGrid").innerHTML = data.html;
+    currentPage = data.page;
+    totalPages = data.pages;
+    pageTotal = data.total;
+    scopeCounts = data.counts;
+    initServiceTypes();
+    switchView(currentView);
+    document.querySelectorAll(".order-card").forEach(card => {
+      card.classList.toggle("has-driver", card.dataset.hasDriver === "yes");
+      card.querySelector(".card-checkbox").checked = selected.has(card.dataset.id);
+    });
+    onCheckChange();
+    status.textContent = data.total ? "" : "沒有符合條件的訂單";
+    status.classList.toggle("hidden", data.total > 0);
+  } catch (err) {
+    if (err.name === "AbortError" || requestId !== listRequestId) return;
+    // Stale cards must not remain editable under a different date/filter.
+    document.getElementById("orderGrid").innerHTML = "";
+    pageTotal = 0;
+    totalPages = currentPage = 1;
+    updateSelCount();
+    status.textContent = "訂單讀取失敗，請重試";
+    document.getElementById("listRetry").classList.remove("hidden");
+  } finally {
+    if (requestId === listRequestId) {
+      setListBusy(false);
+      updateCounts();
+    }
+  }
+}
+
+async function loadDateSummary(force = false) {
+  if (summaryController) summaryController.abort();
+  const requestId = ++summaryRequestId;
+  const sort = currentSort;
+  const error = document.getElementById("summaryStatus");
+  error.classList.add("hidden");
+  if (!force && summaryCache[sort]) {
+    dateSummaries = summaryCache[sort];
+    updateCounts();
+    if (currentTab === "custom") renderCalendar();
+    return;
+  }
+  const controller = summaryController = new AbortController();
+  dateSummaries = null;
+  updateCounts();
+  if (currentTab === "custom") renderCalendar();
+  try {
+    const response = await fetch("/api/orders/summary?sort=" + sort, { signal: controller.signal, cache: "no-store" });
+    if (!response.ok) throw new Error("summary_failed");
+    const data = await response.json();
+    if (!data.ok) throw new Error("summary_failed");
+    if (requestId !== summaryRequestId) return;
+    dateSummaries = summaryCache[sort] = data.dates;
+  } catch (err) {
+    if (err.name === "AbortError" || requestId !== summaryRequestId) return;
+    error.classList.remove("hidden");
+  } finally {
+    if (requestId === summaryRequestId) {
+      updateCounts();
+      if (currentTab === "custom") renderCalendar();
+    }
+  }
+}
+
+function refreshOrdersAfterChange() {
+  summaryCache = {};
+  if (listController) listController.abort();
+  if (summaryController) summaryController.abort();
+  ++listRequestId;
+  ++summaryRequestId;
+  setListBusy(true);
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    loadDateSummary(true);
+    loadOrderPage(currentPage, true);
+  }, 80);
+}
+
+function applyFilters() {
+  clearTimeout(searchTimer);
+  if (refreshTimer) loadDateSummary(true);
+  clearTimeout(refreshTimer);
+  refreshTimer = null;
+  loadOrderPage(1);
+}
+
+function queueSearch() {
+  clearTimeout(searchTimer);
+  if (listController) listController.abort();
+  ++listRequestId;
+  setListBusy(true);
+  searchTimer = setTimeout(applyFilters, 300);
 }
 
 function clearSearch() {
@@ -1223,66 +1336,35 @@ function toggleSvcFilter(btn) {
 }
 
 function updateCounts() {
-  const all = document.querySelectorAll(".order-card");
-  // Custom range sub-counts
-  if (dateRangeFrom || dateRangeTo) {
-    const customCards = Array.from(all).filter(c => {
-      const n = dateToNum(getCardDateKey(c));
-      const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
-      return n !== null && (!f || n >= f) && (!t || n <= t);
-    });
-    const cntCustom = document.getElementById("cnt-custom");
-    if (cntCustom) cntCustom.textContent = customCards.length ? `(${customCards.length})` : "";
-    const tsubCustom = document.getElementById("tsub-custom");
-    if (tsubCustom) tsubCustom.innerHTML = makeSubHtml(
-      customCards.filter(c => c.dataset.hasInvoice === "yes").length,
-      customCards.filter(c => c.dataset.hasLuxury === "yes").length,
-      customCards.filter(c => c.dataset.hasSpecialSvc === "yes").length
-    );
-  } else {
-    const cntCustom = document.getElementById("cnt-custom");
-    if (cntCustom) cntCustom.textContent = "";
-    const tsubCustom = document.getElementById("tsub-custom");
-    if (tsubCustom) tsubCustom.innerHTML = "";
-  }
+  const dateRows = new Map((dateSummaries || []).map(row => [row.date, row]));
   document.querySelectorAll(".date-tab-btn[data-tab]").forEach(btn => {
     const tab = btn.dataset.tab;
-    if (tab === "all" || tab === "custom") return;
-    const cards = Array.from(all).filter(c => getCardDateKey(c) === tab);
-    const n = cards.length;
-    const sp = btn.querySelector(".tab-count");
-    if (sp) sp.textContent = n ? `(${n})` : "";
-    const subEl = btn.querySelector(".tab-sub");
-    if (subEl) subEl.innerHTML = makeSubHtml(
-      cards.filter(c => c.dataset.hasInvoice === "yes").length,
-      cards.filter(c => c.dataset.hasLuxury === "yes").length,
-      cards.filter(c => c.dataset.hasSpecialSvc === "yes").length
-    );
-  });
-  const tabCards = Array.from(all).filter(card => {
-    if (currentTab === "all") return true;
-    if (currentTab === "custom") {
-      const n = dateToNum(getCardDateKey(card));
-      const f = dateToNum(dateRangeFrom), t = dateToNum(dateRangeTo);
-      return n !== null && (!f || n >= f) && (!t || n <= t);
+    let rows;
+    if (tab === "custom") {
+      const from = dateToNum(dateRangeFrom), to = dateToNum(dateRangeTo);
+      rows = (dateSummaries || []).filter(row => {
+        if (!from && !to) return false;
+        if (from && to && from > to) return row.date >= from || row.date <= to;
+        return (!from || row.date >= from) && (!to || row.date <= to);
+      });
+    } else if (tab === "all") {
+      rows = dateSummaries || [];
+    } else {
+      rows = [dateRows.get(dateToNum(tab))].filter(Boolean);
     }
-    return getCardDateKey(card) === currentTab;
+    const counts = rows.reduce((sum, row) => {
+      for (const key of ["total", "invoice", "luxury", "svc"]) sum[key] += row[key];
+      return sum;
+    }, { total: 0, invoice: 0, luxury: 0, svc: 0 });
+    const count = btn.querySelector(".tab-count");
+    if (count) count.textContent = dateSummaries ? (counts.total ? `(${counts.total})` : "") : "…";
+    const sub = btn.querySelector(".tab-sub");
+    if (sub) sub.innerHTML = makeSubHtml(counts.invoice, counts.luxury, counts.svc);
   });
-  const assignedCount = tabCards.filter(c => c.dataset.hasDriver === "yes").length;
-  const unassignedCount = tabCards.filter(c => c.dataset.hasDriver === "no").length;
-  const invoiceCount = tabCards.filter(c => c.dataset.hasInvoice === "yes").length;
-  const luxuryCount = tabCards.filter(c => c.dataset.hasLuxury === "yes").length;
-  const svcCount = tabCards.filter(c => c.dataset.hasSpecialSvc === "yes").length;
-  const cntAssigned = document.getElementById("cnt-assigned");
-  const cntUnassigned = document.getElementById("cnt-unassigned");
-  if (cntAssigned) cntAssigned.textContent = assignedCount ? `(${assignedCount})` : "";
-  if (cntUnassigned) cntUnassigned.textContent = unassignedCount ? `(${unassignedCount})` : "";
-  const cntInvoice = document.getElementById("cnt-invoice");
-  if (cntInvoice) cntInvoice.textContent = invoiceCount ? `(${invoiceCount})` : "";
-  const cntLux = document.getElementById("cnt-luxury");
-  if (cntLux) cntLux.textContent = luxuryCount ? `(${luxuryCount})` : "";
-  const cntSvc = document.getElementById("cnt-svc");
-  if (cntSvc) cntSvc.textContent = svcCount ? `(${svcCount})` : "";
+  for (const key of ["assigned", "unassigned", "invoice", "luxury", "svc"]) {
+    const el = document.getElementById("cnt-" + key);
+    if (el) el.textContent = scopeCounts ? `(${scopeCounts[key]})` : "…";
+  }
 }
 
 function toggleCard(card, event) {
@@ -1327,16 +1409,11 @@ async function deleteSelected() {
   if (!cards.length) return;
   if (!confirm(`確定刪除選取的 ${cards.length} 筆訂單？`)) return;
   const ids = cards.map(c => c.dataset.id);
-  const resp = await fetch("/api/orders/delete", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ids })
-  });
-  const data = await resp.json();
-  if (data.ok) {
-    cards.forEach(c => c.remove());
-    updateCounts();
-    updateSelCount();
+  try {
+    await postJson("/api/orders/delete", { ids });
+    refreshOrdersAfterChange();
+  } catch (err) {
+    alert("刪除訂單失敗，請再試一次。");
   }
 }
 
@@ -1414,7 +1491,9 @@ async function copyText() {
     if (modalDriver) {
       const cards = [...document.querySelectorAll(".order-card .card-checkbox:checked")]
         .map(cb => cb.closest(".order-card"));
-      await Promise.all(cards.map(card => apiSetDriver(card.dataset.id, modalDriver)));
+      const results = await Promise.allSettled(cards.map(card => apiSetDriver(card.dataset.id, modalDriver)));
+      refreshOrdersAfterChange();
+      if (results.some(result => result.status === "rejected")) throw new Error("partial_save_failed");
       cards.forEach(card => {
         setCardDriver(card, modalDriver);
       });
@@ -1484,8 +1563,7 @@ function setCardDriver(card, name) {
     card.classList.remove("has-driver");
     card.dataset.hasDriver = "no";
   }
-  updateCounts();
-  applyFilters();
+  refreshOrdersAfterChange();
 }
 
 async function markNoDriver(btn, event) {
@@ -1507,11 +1585,13 @@ async function assignDriverBulk() {
   if (!name || !name.trim()) return;
   const driverName = name.trim();
   try {
-    await Promise.all(cards.map(card => apiSetDriver(card.dataset.id, driverName)));
+    const results = await Promise.allSettled(cards.map(card => apiSetDriver(card.dataset.id, driverName)));
+    if (results.some(result => result.status === "rejected")) throw new Error("partial_save_failed");
     cards.forEach(card => setCardDriver(card, driverName));
-    updateCounts();
   } catch (err) {
     alert("批次指定司機儲存失敗，請再試一次。");
+  } finally {
+    refreshOrdersAfterChange();
   }
 }
 
@@ -1566,44 +1646,18 @@ function initServiceTypes() {
 // ── Sort ──
 let currentSort = "date";
 
-function applySort() {
-  const grid = document.getElementById("orderGrid");
-  const cards = [...grid.querySelectorAll(".order-card")];
-  if (currentSort === "created") {
-    cards.sort((a, b) => {
-      const ta = a.dataset.created || "";
-      const tb = b.dataset.created || "";
-      const ia = parseInt(a.dataset.id || "0", 10);
-      const ib = parseInt(b.dataset.id || "0", 10);
-      if (!ta && !tb) return ib - ia;
-      if (!ta) return 1;
-      if (!tb) return -1;
-      const byTime = tb.localeCompare(ta);
-      return byTime || (ib - ia);
-    });
-  } else {
-    cards.sort((a, b) => parseInt(a.dataset.origIdx) - parseInt(b.dataset.origIdx));
-  }
-  cards.forEach(c => grid.appendChild(c));
-}
-
 function switchSort(sort, btn) {
   currentSort = sort;
   document.querySelectorAll(".btn-view.btn-sort-opt").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  applySort();
+  loadDateSummary();
   applyFilters();
-  if (currentTab === "custom") renderCalendar();
 }
 
 // Init
-updateCounts();
 updateSelCount();
-initServiceTypes();
-initSimpleLines();
-document.querySelectorAll(".order-card").forEach(card => {
-  if (card.querySelector(".driver-name").textContent.trim()) card.classList.add("has-driver");
-});
+loadDateSummary();
+loadOrderPage(1);
 </script>
 </body>
 </html>
