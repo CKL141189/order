@@ -70,6 +70,14 @@ class OrderQueryPostgresTests(unittest.TestCase):
                                 {"date": 1027, "total": 3, "invoice": 1, "luxury": 0, "svc": 0}])
         self.assertEqual([r["total"] for r in get_order_summary(self.get_db, "created")], [62, 61])
 
+    def test_summary_plan_parses_each_record_once(self):
+        from order_queries import LISTING_CTE
+        with self.conn.cursor() as cur:
+            cur.execute("EXPLAIN (FORMAT JSON) " + LISTING_CTE + " SELECT booking_day, count(*) FROM listing GROUP BY booking_day")
+            plan = json.dumps(cur.fetchone()[0])
+        self.assertIn('CTE source', plan)
+        self.assertIn('CTE parsed', plan)
+
     def test_normalized_dates_custom_range_and_empty_day(self):
         with self.conn.cursor() as cur:
             cur.execute("UPDATE orders SET data=%s WHERE id=1", (json.dumps({"預約日期": "05／16 星期六", "預約時間": "上午 03：20"}),))

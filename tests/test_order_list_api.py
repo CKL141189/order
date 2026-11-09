@@ -1,5 +1,6 @@
 import unittest
 from unittest.mock import patch
+from psycopg2.errors import QueryCanceled
 
 import app as order_app
 
@@ -48,6 +49,13 @@ class OrderListApiTests(unittest.TestCase):
                 self.assertEqual(self.client.get(url).status_code, 400)
             page.assert_not_called()
             summary.assert_not_called()
+
+    def test_slow_queries_return_a_retryable_timeout(self):
+        for name, url in (("get_order_page", "/api/orders"), ("get_order_summary", "/api/orders/summary")):
+            with self.subTest(url=url), patch.object(order_app, name, side_effect=QueryCanceled("timeout")):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(response.get_json(), {"ok": False, "error": "query_timeout"})
 
 
 if __name__ == "__main__":

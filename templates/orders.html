@@ -1156,6 +1156,25 @@ function goToPage(page) {
   }
 }
 
+async function fetchOrderJson(url, controller) {
+  let timedOut = false;
+  const deadline = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 25000);
+  try {
+    const response = await fetch(url, { signal: controller.signal, cache: "no-store" });
+    const data = await response.json();
+    if (!response.ok || !data.ok) throw new Error(data.error === "query_timeout" ? "request_timeout" : "load_failed");
+    return data;
+  } catch (err) {
+    if (timedOut) throw new Error("request_timeout");
+    throw err;
+  } finally {
+    clearTimeout(deadline);
+  }
+}
+
 async function loadOrderPage(page = 1, preserveSelection = false) {
   if (listController) listController.abort();
   const controller = listController = new AbortController();
@@ -1182,10 +1201,7 @@ async function loadOrderPage(page = 1, preserveSelection = false) {
   if (dateRangeFrom) params.set("start", dateRangeFrom);
   if (dateRangeTo) params.set("end", dateRangeTo);
   try {
-    const response = await fetch("/api/orders?" + params, { signal: controller.signal, cache: "no-store" });
-    if (!response.ok) throw new Error("load_failed");
-    const data = await response.json();
-    if (!data.ok) throw new Error("load_failed");
+    const data = await fetchOrderJson("/api/orders?" + params, controller);
     if (requestId !== listRequestId) return;
     document.getElementById("orderGrid").innerHTML = data.html;
     currentPage = data.page;
@@ -1208,7 +1224,7 @@ async function loadOrderPage(page = 1, preserveSelection = false) {
     pageTotal = 0;
     totalPages = currentPage = 1;
     updateSelCount();
-    status.textContent = "訂單讀取失敗，請重試";
+    status.textContent = err.message === "request_timeout" ? "訂單讀取逾時，請重試" : "訂單讀取失敗，請重試";
     document.getElementById("listRetry").classList.remove("hidden");
   } finally {
     if (requestId === listRequestId) {
@@ -1235,10 +1251,7 @@ async function loadDateSummary(force = false) {
   updateCounts();
   if (currentTab === "custom") renderCalendar();
   try {
-    const response = await fetch("/api/orders/summary?sort=" + sort, { signal: controller.signal, cache: "no-store" });
-    if (!response.ok) throw new Error("summary_failed");
-    const data = await response.json();
-    if (!data.ok) throw new Error("summary_failed");
+    const data = await fetchOrderJson("/api/orders/summary?sort=" + sort, controller);
     if (requestId !== summaryRequestId) return;
     dateSummaries = summaryCache[sort] = data.dates;
   } catch (err) {

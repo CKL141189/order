@@ -353,7 +353,11 @@ def order_list_api():
         options = list_options(request.args, get_date_tabs()[1]["date_key"])
     except ValueError:
         return jsonify({"ok": False, "error": "invalid_filter"}), 400
-    result = get_order_page(get_db, options)
+    try:
+        result = get_order_page(get_db, options)
+    except psycopg2.errors.QueryCanceled:
+        app.logger.warning("Order list query timed out")
+        return jsonify({"ok": False, "error": "query_timeout"}), 503, {"Cache-Control": "no-store"}
     html = render_template("_order_cards.html", orders=result.pop("orders"),
                            drivers=result.pop("drivers"), fields=FIELDS)
     response = jsonify({"ok": True, "html": html, **result})
@@ -366,7 +370,12 @@ def order_summary_api():
     sort = request.args.get("sort", "date")
     if sort not in ("date", "created"):
         return jsonify({"ok": False, "error": "invalid_filter"}), 400
-    response = jsonify({"ok": True, "dates": get_order_summary(get_db, sort)})
+    try:
+        dates = get_order_summary(get_db, sort)
+    except psycopg2.errors.QueryCanceled:
+        app.logger.warning("Order summary query timed out")
+        return jsonify({"ok": False, "error": "query_timeout"}), 503, {"Cache-Control": "no-store"}
+    response = jsonify({"ok": True, "dates": dates})
     response.headers["Cache-Control"] = "no-store"
     return response
 

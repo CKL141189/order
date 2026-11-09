@@ -8,11 +8,11 @@ import psycopg2.extras
 
 PAGE_SIZE = 50
 
-# Keep normalization in SQL so filtering, counts, and pagination use the same rows.
+# Materialize parsing once: inlining repeats JSON casts and regexes per aggregate.
 LISTING_CTE = r"""
-WITH source AS (
+WITH source AS MATERIALIZED (
     SELECT id, data::jsonb AS doc FROM orders
-), parsed AS (
+), parsed AS MATERIALIZED (
     SELECT id, doc,
         regexp_match(COALESCE(doc->>'預約日期', ''),
             '([0-9]{1,2})[[:space:]]*[/／][[:space:]]*([0-9]{1,2})') AS booking,
@@ -111,6 +111,7 @@ def get_order_page(get_db, options):
     ordering = "created_at DESC, id DESC" if options["sort"] == "created" else "booking_day ASC NULLS LAST, time_minutes ASC, id ASC"
     with get_db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '15s'")
             cur.execute(LISTING_CTE + f"""
                 SELECT count(*) AS total,
                     count(*) FILTER (WHERE assigned) AS assigned,
@@ -148,6 +149,7 @@ def get_order_summary(get_db, sort):
     date_column = "created_day" if sort == "created" else "booking_day"
     with get_db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '15s'")
             cur.execute(LISTING_CTE + f"""
                 SELECT {date_column} AS date, count(*) AS total,
                     count(*) FILTER (WHERE invoice) AS invoice,
