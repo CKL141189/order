@@ -150,6 +150,7 @@ def ensure_db():
 def parse_order(text):
     order = {}
     field_order = []
+    text = re.sub(r'備[\s\u3000]+註', '備註', text)
     # Support both ： (fullwidth colon) and 1–3 spaces as field separator
     pattern = "(" + "|".join(field_name_pattern(f) for f in _ALL_K_FIELDS) + ")(?:[：:]|[ \t]{1,3})"
     parts = re.split(pattern, text)
