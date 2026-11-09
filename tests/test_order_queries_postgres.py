@@ -6,6 +6,7 @@ from contextlib import contextmanager
 import json
 import os
 import unittest
+from unittest.mock import MagicMock
 
 import psycopg2
 
@@ -46,6 +47,27 @@ class OrderQueryPostgresTests(unittest.TestCase):
         self.assertEqual([int(o["_id"]) for o in second["orders"]], list(range(101, 121)))
         self.assertEqual(last["page"], 2)
         self.assertEqual(len(last["orders"]), 20)
+
+    def test_counts_and_cards_share_one_query(self):
+        cursors = []
+        connection = MagicMock(wraps=self.conn)
+        def cursor(**kwargs):
+            real = self.conn.cursor(**kwargs)
+            spy = MagicMock(wraps=real)
+            spy.__enter__.return_value = spy
+            spy.__exit__.side_effect = real.__exit__
+            cursors.append(spy)
+            return spy
+        connection.cursor.side_effect = cursor
+        @contextmanager
+        def get_db():
+            yield connection
+        result = get_order_page(get_db, list_options({}, "10/21"))
+        reads = [call.args[0] for cur in cursors for call in cur.execute.call_args_list
+                 if call.args[0].lstrip().startswith("WITH")]
+        self.assertEqual(len(reads), 1)
+        self.assertEqual(result["total"], 120)
+        self.assertEqual(len(result["orders"]), 100)
 
     def test_counts_are_scope_wide_and_filters_combine(self):
         result = self.page(invoice="1", luxury="1", driver="assigned")

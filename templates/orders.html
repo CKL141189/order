@@ -527,6 +527,18 @@ let summaryController = null;
 let searchTimer = null;
 let refreshTimer = null;
 let listBusy = false;
+const todayDateKey = currentTab;
+const orderPageCache = new Map();
+const preloadedPages = new Set();
+const CACHE_MAX_PAGES = 16;
+const CACHE_MAX_BYTES = 8 * 1024 * 1024;
+let backgroundController = null;
+let backgroundTimer = null;
+let backgroundRequestId = 0;
+let pendingWrites = 0;
+let hasLoadedOrders = false;
+let summaryLoading = false;
+let summaryFailed = false;
 
 function dateToNum(s) {
   if (!s) return null;
@@ -663,14 +675,22 @@ function closeEditModal() { document.getElementById("editModal").classList.remov
 function closeEditOnOverlay(e) { if (e.target === document.getElementById("editModal")) closeEditModal(); }
 
 async function postJson(url, payload) {
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const data = await resp.json().catch(() => ({}));
-  if (!resp.ok || !data.ok) throw new Error(data.error || "save_failed");
-  return data;
+  pendingWrites++;
+  invalidateOrderCache();
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) throw new Error(data.error || "save_failed");
+    return data;
+  } finally {
+    pendingWrites--;
+    invalidateOrderCache();
+    scheduleBackgroundLoads();
+  }
 }
 
 async function saveOrder() {
@@ -1175,7 +1195,102 @@ async function fetchOrderJson(url, controller) {
   }
 }
 
+function pauseBackgroundLoads() {
+  clearTimeout(backgroundTimer);
+  backgroundTimer = null;
+  ++backgroundRequestId;
+  if (backgroundController) backgroundController.abort();
+  backgroundController = null;
+}
+
+function invalidateOrderCache() {
+  pauseBackgroundLoads();
+  orderPageCache.clear();
+  preloadedPages.clear();
+}
+
+function cachedOrderPage(key) {
+  const entry = orderPageCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    orderPageCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function rememberOrderPage(key, data, background = false) {
+  const bytes = JSON.stringify(data).length * 2;
+  if (bytes > CACHE_MAX_BYTES) return false;
+  for (const cachedKey of orderPageCache.keys()) cachedOrderPage(cachedKey);
+  orderPageCache.delete(key);
+  const full = () => orderPageCache.size >= CACHE_MAX_PAGES ||
+    [...orderPageCache.values()].reduce((sum, entry) => sum + entry.bytes, bytes) > CACHE_MAX_BYTES;
+  if (background && full()) return false;
+  while (full()) orderPageCache.delete(orderPageCache.keys().next().value);
+  orderPageCache.set(key, { data, bytes, expiresAt: Date.now() + 30000 });
+  return true;
+}
+
+function orderedPreloadDates(rows, anchorKey = todayDateKey) {
+  const year = new Date().getFullYear();
+  const anchor = dateToNum(anchorKey);
+  const anchorTime = Date.UTC(year, Math.floor(anchor / 100) - 1, anchor % 100);
+  return rows.filter(row => row.total > 0 && row.date !== anchor).map(row => {
+    const month = Math.floor(row.date / 100), day = row.date % 100;
+    const distances = [year - 1, year, year + 1].map(y => (Date.UTC(y, month - 1, day) - anchorTime) / 86400000);
+    const distance = distances.sort((a, b) => Math.abs(a) - Math.abs(b))[0];
+    return { key: `${month}/${day}`, distance };
+  }).sort((a, b) => Math.ceil(Math.abs(a.distance) / 2) - Math.ceil(Math.abs(b.distance) / 2) ||
+    Math.abs(a.distance) - Math.abs(b.distance) || a.distance - b.distance).map(row => row.key);
+}
+
+function scheduleBackgroundLoads() {
+  if (!hasLoadedOrders || listBusy || pendingWrites) return;
+  if (!dateSummaries) {
+    if (!summaryLoading && !summaryFailed) loadDateSummary();
+    return;
+  }
+  if (backgroundController || backgroundTimer || currentTab === "custom" ||
+      document.getElementById("searchInput").value.trim() || currentDriverFilter !== "all" ||
+      currentInvoiceFilter || currentLuxuryFilter || currentSvcFilter) return;
+  backgroundTimer = setTimeout(() => {
+    backgroundTimer = null;
+    prefetchNextDate();
+  }, 500);
+}
+
+async function prefetchNextDate() {
+  if (listBusy || pendingWrites || !dateSummaries) return;
+  if (preloadedPages.size >= CACHE_MAX_PAGES) return;
+  for (const key of orderPageCache.keys()) cachedOrderPage(key);
+  if (orderPageCache.size >= CACHE_MAX_PAGES) return;
+  const params = orderedPreloadDates(dateSummaries).map(tab => new URLSearchParams({
+    tab, sort: currentSort, page: 1, driver: "all", q: "", invoice: "0", luxury: "0", svc: "0"
+  }).toString()).find(key => !preloadedPages.has(key) && !cachedOrderPage(key));
+  if (!params) return;
+  const controller = backgroundController = new AbortController();
+  const requestId = ++backgroundRequestId;
+  let continueLoading = true;
+  try {
+    const data = await fetchOrderJson("/api/orders?" + params, controller);
+    if (requestId !== backgroundRequestId || pendingWrites) return;
+    preloadedPages.add(params);
+    continueLoading = rememberOrderPage(params, data, true);
+  } catch (err) {
+    if (requestId !== backgroundRequestId || err.name === "AbortError") return;
+    // Background failures never hide or disable the visible orders.
+    continueLoading = false;
+  } finally {
+    if (requestId === backgroundRequestId) {
+      backgroundController = null;
+      if (continueLoading) scheduleBackgroundLoads();
+    }
+  }
+}
+
 async function loadOrderPage(page = 1, preserveSelection = false) {
+  pauseBackgroundLoads();
   if (listController) listController.abort();
   const controller = listController = new AbortController();
   const requestId = ++listRequestId;
@@ -1200,9 +1315,12 @@ async function loadOrderPage(page = 1, preserveSelection = false) {
   });
   if (dateRangeFrom) params.set("start", dateRangeFrom);
   if (dateRangeTo) params.set("end", dateRangeTo);
+  let loaded = false;
   try {
-    const data = await fetchOrderJson("/api/orders?" + params, controller);
+    const cached = pendingWrites ? null : cachedOrderPage(params.toString());
+    const data = cached || await fetchOrderJson("/api/orders?" + params, controller);
     if (requestId !== listRequestId) return;
+    if (!cached && !pendingWrites) rememberOrderPage(params.toString(), data);
     document.getElementById("orderGrid").innerHTML = data.html;
     currentPage = data.page;
     totalPages = data.pages;
@@ -1217,6 +1335,7 @@ async function loadOrderPage(page = 1, preserveSelection = false) {
     onCheckChange();
     status.textContent = data.total ? "" : "沒有符合條件的訂單";
     status.classList.toggle("hidden", data.total > 0);
+    loaded = hasLoadedOrders = true;
   } catch (err) {
     if (err.name === "AbortError" || requestId !== listRequestId) return;
     // Stale cards must not remain editable under a different date/filter.
@@ -1230,6 +1349,7 @@ async function loadOrderPage(page = 1, preserveSelection = false) {
     if (requestId === listRequestId) {
       setListBusy(false);
       updateCounts();
+      if (loaded) scheduleBackgroundLoads();
     }
   }
 }
@@ -1238,15 +1358,19 @@ async function loadDateSummary(force = false) {
   if (summaryController) summaryController.abort();
   const requestId = ++summaryRequestId;
   const sort = currentSort;
+  summaryLoading = false;
+  summaryFailed = false;
   const error = document.getElementById("summaryStatus");
   error.classList.add("hidden");
   if (!force && summaryCache[sort]) {
     dateSummaries = summaryCache[sort];
     updateCounts();
     if (currentTab === "custom") renderCalendar();
+    scheduleBackgroundLoads();
     return;
   }
   const controller = summaryController = new AbortController();
+  summaryLoading = true;
   dateSummaries = null;
   updateCounts();
   if (currentTab === "custom") renderCalendar();
@@ -1257,16 +1381,22 @@ async function loadDateSummary(force = false) {
   } catch (err) {
     if (err.name === "AbortError" || requestId !== summaryRequestId) return;
     error.classList.remove("hidden");
+    summaryFailed = true;
   } finally {
     if (requestId === summaryRequestId) {
+      summaryLoading = false;
       updateCounts();
       if (currentTab === "custom") renderCalendar();
+      if (dateSummaries) scheduleBackgroundLoads();
     }
   }
 }
 
 function refreshOrdersAfterChange() {
+  invalidateOrderCache();
   summaryCache = {};
+  dateSummaries = null;
+  summaryFailed = summaryLoading = false;
   if (listController) listController.abort();
   if (summaryController) summaryController.abort();
   ++listRequestId;
@@ -1275,20 +1405,19 @@ function refreshOrdersAfterChange() {
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
-    loadDateSummary(true);
     loadOrderPage(currentPage, true);
   }, 80);
 }
 
 function applyFilters() {
   clearTimeout(searchTimer);
-  if (refreshTimer) loadDateSummary(true);
   clearTimeout(refreshTimer);
   refreshTimer = null;
   loadOrderPage(1);
 }
 
 function queueSearch() {
+  pauseBackgroundLoads();
   clearTimeout(searchTimer);
   if (listController) listController.abort();
   ++listRequestId;
@@ -1660,16 +1789,19 @@ function initServiceTypes() {
 let currentSort = "date";
 
 function switchSort(sort, btn) {
+  pauseBackgroundLoads();
+  if (summaryController) summaryController.abort();
+  ++summaryRequestId;
+  summaryLoading = summaryFailed = false;
+  dateSummaries = summaryCache[sort] || null;
   currentSort = sort;
   document.querySelectorAll(".btn-view.btn-sort-opt").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  loadDateSummary();
   applyFilters();
 }
 
 // Init
 updateSelCount();
-loadDateSummary();
 loadOrderPage(1);
 </script>
 </body>

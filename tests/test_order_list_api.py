@@ -36,6 +36,13 @@ class OrderListApiTests(unittest.TestCase):
         self.assertNotIn("orders", result)
         self.assertIn("no-store", response.headers["Cache-Control"])
 
+    def test_api_exposes_nonsensitive_query_and_render_timings(self):
+        page = {"orders": [], "drivers": {}, "total": 0, "page": 1, "pages": 1, "page_size": 100, "counts": {}}
+        with patch.object(order_app, "get_order_page", return_value=page):
+            response = self.client.get("/api/orders")
+        self.assertIn("query;dur=", response.headers.get("Server-Timing", ""))
+        self.assertIn("render;dur=", response.headers.get("Server-Timing", ""))
+
     def test_summary_has_no_order_details(self):
         dates = [{"date": 1021, "total": 73, "invoice": 8, "luxury": 2, "svc": 1}]
         with patch.object(order_app, "get_order_summary", return_value=dates, create=True):

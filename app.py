@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify, redirect, g
 import re
 import psycopg2
 import psycopg2.extras
@@ -6,6 +6,8 @@ from contextlib import contextmanager
 import json
 import os
 from datetime import datetime, timedelta
+from threading import Lock
+from time import perf_counter
 from order_queries import get_order_page, get_order_summary, list_options
 
 app = Flask(__name__)
@@ -140,13 +142,29 @@ def init_db():
             """)
 
 _db_initialized = False
+_db_init_lock = Lock()
+_write_lock = Lock()
 
 @app.before_request
 def ensure_db():
     global _db_initialized
     if not _db_initialized:
-        init_db()
-        _db_initialized = True
+        with _db_init_lock:
+            if not _db_initialized:
+                init_db()
+                _db_initialized = True
+
+@app.before_request
+def serialize_writes():
+    # Preserve the former single-worker write ordering while reads run concurrently.
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        _write_lock.acquire()
+        g.write_lock_held = True
+
+@app.teardown_request
+def release_write_lock(error):
+    if g.pop("write_lock_held", False):
+        _write_lock.release()
 
 def parse_order(text):
     order = {}
@@ -349,6 +367,7 @@ def orders_page():
 
 @app.route("/api/orders", methods=["GET"])
 def order_list_api():
+    started = perf_counter()
     try:
         options = list_options(request.args, get_date_tabs()[1]["date_key"])
     except ValueError:
@@ -358,15 +377,18 @@ def order_list_api():
     except psycopg2.errors.QueryCanceled:
         app.logger.warning("Order list query timed out")
         return jsonify({"ok": False, "error": "query_timeout"}), 503, {"Cache-Control": "no-store"}
+    queried = perf_counter()
     html = render_template("_order_cards.html", orders=result.pop("orders"),
                            drivers=result.pop("drivers"), fields=FIELDS)
     response = jsonify({"ok": True, "html": html, **result})
+    response.headers["Server-Timing"] = f"query;dur={(queried - started) * 1000:.1f}, render;dur={(perf_counter() - queried) * 1000:.1f}"
     response.headers["Cache-Control"] = "no-store"
     return response
 
 
 @app.route("/api/orders/summary", methods=["GET"])
 def order_summary_api():
+    started = perf_counter()
     sort = request.args.get("sort", "date")
     if sort not in ("date", "created"):
         return jsonify({"ok": False, "error": "invalid_filter"}), 400
@@ -376,6 +398,7 @@ def order_summary_api():
         app.logger.warning("Order summary query timed out")
         return jsonify({"ok": False, "error": "query_timeout"}), 503, {"Cache-Control": "no-store"}
     response = jsonify({"ok": True, "dates": dates})
+    response.headers["Server-Timing"] = f"query;dur={(perf_counter() - started) * 1000:.1f}"
     response.headers["Cache-Control"] = "no-store"
     return response
 

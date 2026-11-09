@@ -112,7 +112,9 @@ def get_order_page(get_db, options):
     with get_db() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SET LOCAL statement_timeout = '15s'")
-            cur.execute(LISTING_CTE + f"""
+            cur.execute(LISTING_CTE + f""",
+                scoped AS MATERIALIZED (SELECT * FROM listing WHERE {scope}),
+                counts AS (
                 SELECT count(*) AS total,
                     count(*) FILTER (WHERE assigned) AS assigned,
                     count(*) FILTER (WHERE NOT assigned) AS unassigned,
@@ -120,27 +122,39 @@ def get_order_page(get_db, options):
                     count(*) FILTER (WHERE luxury) AS luxury,
                     count(*) FILTER (WHERE svc) AS svc,
                     count(*) FILTER (WHERE {filters}) AS matched
-                FROM listing WHERE {scope}
-            """, params)
-            counts = dict(cur.fetchone())
-            total = counts.pop("matched")
-            pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
-            page = min(options["page"], pages)
-            cur.execute(LISTING_CTE + f"""
-                SELECT id, doc, driver_name FROM listing
-                WHERE ({scope}) AND ({filters})
-                ORDER BY {ordering} LIMIT %s OFFSET %s
-            """, params + [PAGE_SIZE, (page - 1) * PAGE_SIZE])
+                FROM scoped
+                ), pagination AS (
+                    SELECT greatest(1, (matched + {PAGE_SIZE - 1}) / {PAGE_SIZE}) AS pages,
+                        least(%s, greatest(1, (matched + {PAGE_SIZE - 1}) / {PAGE_SIZE})) AS page
+                    FROM counts
+                )
+                SELECT counts.*, pagination.page, pagination.pages,
+                    cards.id, cards.doc, cards.driver_name
+                FROM counts CROSS JOIN pagination
+                LEFT JOIN LATERAL (
+                    SELECT id, doc, driver_name,
+                        row_number() OVER (ORDER BY {ordering}) AS position
+                    FROM scoped WHERE {filters}
+                    ORDER BY {ordering} LIMIT {PAGE_SIZE}
+                    OFFSET ((pagination.page - 1) * {PAGE_SIZE})
+                ) cards ON TRUE
+                ORDER BY cards.position
+            """, params + [min(options["page"], 2147483647)])
             rows = cur.fetchall()
+    # The left join keeps one metadata row even when no orders match.
+    meta = rows[0]
+    counts = {key: meta[key] for key in ("total", "assigned", "unassigned", "invoice", "luxury", "svc")}
     orders, drivers = [], {}
     for row in rows:
+        if row["id"] is None:
+            continue
         order = dict(row["doc"])
         order["_id"] = str(row["id"])
         orders.append(order)
         if row["driver_name"]:
             drivers[order["_id"]] = row["driver_name"]
     return {"orders": orders, "drivers": drivers, "counts": counts,
-            "total": total, "page": page, "pages": pages, "page_size": PAGE_SIZE}
+            "total": meta["matched"], "page": meta["page"], "pages": meta["pages"], "page_size": PAGE_SIZE}
 
 
 def get_order_summary(get_db, sort):
