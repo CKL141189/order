@@ -531,6 +531,7 @@ const todayDateKey = currentTab;
 const orderPageCache = new Map();
 const preloadedPages = new Set();
 const CACHE_MAX_PAGES = 16;
+const PREFETCH_MAX_PAGES = 4;
 const CACHE_MAX_BYTES = 8 * 1024 * 1024;
 let backgroundController = null;
 let backgroundTimer = null;
@@ -1257,12 +1258,12 @@ function scheduleBackgroundLoads() {
   backgroundTimer = setTimeout(() => {
     backgroundTimer = null;
     prefetchNextDate();
-  }, 500);
+  }, 1500);
 }
 
 async function prefetchNextDate() {
   if (listBusy || pendingWrites || !dateSummaries) return;
-  if (preloadedPages.size >= CACHE_MAX_PAGES) return;
+  if (preloadedPages.size >= PREFETCH_MAX_PAGES) return;
   for (const key of orderPageCache.keys()) cachedOrderPage(key);
   if (orderPageCache.size >= CACHE_MAX_PAGES) return;
   const params = orderedPreloadDates(dateSummaries).map(tab => new URLSearchParams({

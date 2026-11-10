@@ -8,39 +8,20 @@ import psycopg2.extras
 
 PAGE_SIZE = 100
 
-# Materialize parsing once: inlining repeats JSON casts and regexes per aggregate.
+# Only compact stored metadata participates in filtering and counting.
 LISTING_CTE = r"""
-WITH source AS MATERIALIZED (
-    SELECT id, data::jsonb AS doc FROM orders
-), parsed AS MATERIALIZED (
-    SELECT id, doc,
-        regexp_match(COALESCE(doc->>'預約日期', ''),
-            '([0-9]{1,2})[[:space:]]*[/／][[:space:]]*([0-9]{1,2})') AS booking,
-        regexp_match(COALESCE(doc->>'created_at', ''),
-            '^[0-9]{4}/([0-9]{1,2})/([0-9]{1,2})') AS created,
-        regexp_match(COALESCE(doc->>'預約時間', ''),
-            '([0-9]{1,2})[[:space:]]*[:：][[:space:]]*([0-9]{2})') AS clock
-    FROM source
-), listing AS (
-    SELECT p.id, p.doc, COALESCE(d.name, '') AS driver_name,
-        CASE WHEN booking[1]::int BETWEEN 1 AND 12 AND booking[2]::int BETWEEN 1 AND 31
-             THEN booking[1]::int * 100 + booking[2]::int END AS booking_day,
-        CASE WHEN created[1]::int BETWEEN 1 AND 12 AND created[2]::int BETWEEN 1 AND 31
-             THEN created[1]::int * 100 + created[2]::int END AS created_day,
-        COALESCE(doc->>'created_at', '') AS created_at,
-        COALESCE((CASE
-            WHEN strpos(COALESCE(doc->>'預約時間', ''), '下午') > 0 AND clock[1]::int < 12
-                THEN clock[1]::int + 12
-            WHEN strpos(COALESCE(doc->>'預約時間', ''), '上午') > 0 AND clock[1]::int = 12
-                THEN 0
-            ELSE clock[1]::int END) * 60 + clock[2]::int, 0) AS time_minutes,
-        COALESCE(d.name, '') <> '' AS assigned,
-        (COALESCE(doc->>'備註', '') || ' ' || COALESCE(doc->>'付費方式', ''))
-            ~ '(發票|統編|統一編號)' AS invoice,
-        (COALESCE(doc->>'接送車型', '') || ' ' || COALESCE(doc->>'備註', ''))
-            ~* '(lm|阿法|alphard)' AS luxury,
-        COALESCE(doc->>'服務項目', '') ~ '(單程|包車)' AS svc
-    FROM parsed p LEFT JOIN drivers d ON d.order_id = p.id::text
+WITH listing AS (
+    SELECT o.id, COALESCE(d.name, '') AS driver_name,
+        (listing_meta->>'booking_day')::int AS booking_day,
+        (listing_meta->>'created_day')::int AS created_day,
+        listing_meta->>'created_at' AS created_at,
+        (listing_meta->>'time_minutes')::int AS time_minutes,
+        listing_meta->>'search_text' AS search_text,
+        (listing_meta->>'invoice')::boolean AS invoice,
+        (listing_meta->>'luxury')::boolean AS luxury,
+        (listing_meta->>'svc')::boolean AS svc,
+        COALESCE(d.name, '') <> '' AS assigned
+    FROM orders o LEFT JOIN drivers d ON d.order_id = o.id::text
 )
 """
 
@@ -80,7 +61,7 @@ def list_options(args, default_date):
 def scope_clause(options):
     if options["q"]:
         # strpos treats percent signs and underscores as literal search characters.
-        return "strpos(lower(COALESCE(doc->>'訂單號碼', '') || ' ' || COALESCE(doc->>'聯絡電話', '')), lower(%s)) > 0", [options["q"]]
+        return "strpos(search_text, lower(%s)) > 0", [options["q"]]
     date_column = "created_day" if options["sort"] == "created" else "booking_day"
     start, end = options["start"], options["end"]
     if start is not None and end is not None:
@@ -129,15 +110,16 @@ def get_order_page(get_db, options):
                     FROM counts
                 )
                 SELECT counts.*, pagination.page, pagination.pages,
-                    cards.id, cards.doc, cards.driver_name
+                    cards.id, payload.data::jsonb AS doc, cards.driver_name
                 FROM counts CROSS JOIN pagination
                 LEFT JOIN LATERAL (
-                    SELECT id, doc, driver_name,
+                    SELECT id, driver_name,
                         row_number() OVER (ORDER BY {ordering}) AS position
                     FROM scoped WHERE {filters}
                     ORDER BY {ordering} LIMIT {PAGE_SIZE}
                     OFFSET ((pagination.page - 1) * {PAGE_SIZE})
                 ) cards ON TRUE
+                LEFT JOIN orders payload ON payload.id = cards.id
                 ORDER BY cards.position
             """, params + [min(options["page"], 2147483647)])
             rows = cur.fetchall()

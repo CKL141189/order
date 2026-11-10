@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 import psycopg2
 
 from order_queries import get_order_page, get_order_summary, list_options
+from order_schema import ensure_listing_schema
 
 
 @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL not set")
@@ -30,6 +31,8 @@ class OrderQueryPostgresTests(unittest.TestCase):
                 cur.execute("INSERT INTO orders (data) VALUES (%s)", (json.dumps(order, ensure_ascii=False),))
                 if i % 2 == 0:
                     cur.execute("INSERT INTO drivers VALUES (%s, %s)", (str(i), "Test driver"))
+            ensure_listing_schema(cur)
+            ensure_listing_schema(cur)
 
     @contextmanager
     def get_db(self):
@@ -93,13 +96,14 @@ class OrderQueryPostgresTests(unittest.TestCase):
                                 {"date": 1027, "total": 3, "invoice": 1, "luxury": 0, "svc": 0}])
         self.assertEqual([r["total"] for r in get_order_summary(self.get_db, "created")], [62, 61])
 
-    def test_summary_plan_parses_each_record_once(self):
+    def test_date_query_uses_stored_metadata_index(self):
         from order_queries import LISTING_CTE
         with self.conn.cursor() as cur:
-            cur.execute("EXPLAIN (FORMAT JSON) " + LISTING_CTE + " SELECT booking_day, count(*) FROM listing GROUP BY booking_day")
+            cur.execute("SET LOCAL enable_seqscan = off")
+            cur.execute("EXPLAIN (FORMAT JSON) " + LISTING_CTE + " SELECT id FROM listing WHERE booking_day=1027")
             plan = json.dumps(cur.fetchone()[0])
-        self.assertIn('CTE source', plan)
-        self.assertIn('CTE parsed', plan)
+        self.assertIn('orders_booking_day_idx', plan)
+        self.assertNotIn('CTE parsed', plan)
 
     def test_normalized_dates_custom_range_and_empty_day(self):
         with self.conn.cursor() as cur:
@@ -108,6 +112,16 @@ class OrderQueryPostgresTests(unittest.TestCase):
         self.assertEqual(self.page(tab="custom", start="10/21", end="10/27")["total"], 122)
         empty = self.page(tab="1/1")
         self.assertEqual((empty["orders"], empty["total"], empty["pages"], empty["page"]), ([], 0, 1, 1))
+
+    def test_metadata_migration_preserves_raw_text_and_restores_recompute(self):
+        raw = '{"預約日期":"5/16", "預約時間":"下午19：00", "_field_order":["預約日期","預約時間"]}'
+        with self.conn.cursor() as cur:
+            cur.execute("INSERT INTO orders (data) VALUES (%s) RETURNING id", (raw,))
+            order_id = cur.fetchone()[0]
+            ensure_listing_schema(cur)
+            cur.execute("SELECT data, (listing_meta->>'time_minutes')::int FROM orders WHERE id=%s", (order_id,))
+            self.assertEqual(tuple(cur.fetchone()), (raw, 1140))
+        self.assertEqual(self.page(tab="5/16")["orders"][0]["_field_order"], ["預約日期", "預約時間"])
 
     def test_edits_driver_changes_and_deletes_are_visible_immediately(self):
         with self.conn.cursor() as cur:

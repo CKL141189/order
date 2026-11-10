@@ -141,8 +141,10 @@ test('prefetch cache has page, memory and expiry limits', () => {
 
 test('background work is bounded even when earlier cache entries expire', async () => {
   const { context } = runtime();
-  context.fetch = () => { throw new Error('Prefetch budget exceeded'); };
-  vm.runInContext("dateSummaries=[{date:1110,total:1}]; for(let i=0;i<16;i++) preloadedPages.add('done'+i);", context);
+  let requests = 0;
+  context.fetch = () => { requests++; throw new Error('Prefetch budget exceeded'); };
+  vm.runInContext("dateSummaries=[{date:1110,total:1}]; for(let i=0;i<4;i++) preloadedPages.add('done'+i);", context);
   await vm.runInContext('prefetchNextDate()', context);
+  assert.equal(requests, 0);
   assert.equal(vm.runInContext('backgroundController', context), null);
 });

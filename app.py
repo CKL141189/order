@@ -9,9 +9,12 @@ from datetime import datetime, timedelta
 from threading import Lock
 from time import perf_counter
 from order_queries import get_order_page, get_order_summary, list_options
+from order_schema import ensure_listing_schema
+from database import Database
 
 app = Flask(__name__)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+database = Database(DATABASE_URL)
 
 FIELDS = [
     "訂單號碼", "預約日期", "預約時間", "服務項目", "航班編號",
@@ -91,15 +94,8 @@ def merge_time_values(existing, value):
 
 @contextmanager
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL)
-    try:
+    with database.connection() as conn:
         yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 def init_db():
     with get_db() as conn:
@@ -116,6 +112,7 @@ def init_db():
                     name TEXT NOT NULL
                 )
             """)
+            ensure_listing_schema(cur)
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS failed_orders (
                     id SERIAL PRIMARY KEY,
